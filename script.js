@@ -549,7 +549,6 @@ function showStartScreen() {
 }
 function addShareButton() {
     const playButton = document.getElementById("playButton");
-
     if (!playButton || document.getElementById("shareButton")) return;
 
     const shareButton = document.createElement("button");
@@ -568,40 +567,82 @@ function addShareButton() {
         background: transparent;
         color: white;
         font-size: 15px;
-        font-weight: bold;
         cursor: pointer;
     `;
 
-    shareButton.addEventListener("click", async () => {
-        const shareData = {
-            title: "FLAGGED",
-            text: "Red Flag or Not? 🚩",
-            url: "https://zzr2hz26zy-rgb.github.io/FLAGGED/"
+    shareButton.addEventListener("click", () => {
+        const url = "https://zzr2hz26zy-rgb.github.io/FLAGGED/";
+        const text = "FLAGGED 🚩 — Red Flag or Not?";
+
+        const menu = document.createElement("div");
+        menu.id = "shareMenu";
+        menu.style.cssText = `
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        `;
+
+        const makeButton = (label, action) => {
+            const btn = document.createElement("button");
+            btn.textContent = label;
+            btn.style.cssText = `
+                width: 100%;
+                padding: 12px;
+                border: 1px solid #444;
+                border-radius: 12px;
+                background: #222;
+                color: white;
+                font-size: 14px;
+                cursor: pointer;
+            `;
+            btn.onclick = action;
+            menu.appendChild(btn);
         };
 
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-            } catch (error) {
-                // User cancelled sharing
-            }
-        } else {
-            await navigator.clipboard.writeText(shareData.url);
-            shareButton.textContent =
-                language === "ru" ? "✓ ССЫЛКА СКОПИРОВАНА" :
-                language === "pl" ? "✓ LINK SKOPIOWANY" :
-                "✓ LINK COPIED";
+        makeButton("🟢 WhatsApp", () => {
+            window.open(
+                "https://wa.me/?text=" + encodeURIComponent(text + " " + url),
+                "_blank"
+            );
+        });
 
-            setTimeout(() => {
-                shareButton.textContent =
-                    language === "ru" ? "↗ ПОДЕЛИТЬСЯ" :
-                    language === "pl" ? "↗ UDOSTĘPNIJ" :
-                    "↗ SHARE";
-            }, 2000);
+        makeButton("🔵 Telegram", () => {
+            window.open(
+                "https://t.me/share/url?url=" + encodeURIComponent(url) +
+                "&text=" + encodeURIComponent(text),
+                "_blank"
+            );
+        });
+
+        makeButton("🔵 Facebook", () => {
+            window.open(
+                "https://www.facebook.com/sharer/sharer.php?u=" +
+                encodeURIComponent(url),
+                "_blank"
+            );
+        });
+
+        makeButton("📋 Скопировать ссылку", async () => {
+            await navigator.clipboard.writeText(url);
+            alert(
+                language === "ru" ? "Ссылка скопирована!" :
+                language === "pl" ? "Link skopiowany!" :
+                "Link copied!"
+            );
+        });
+
+        if (document.getElementById("shareMenu")) {
+            document.getElementById("shareMenu").remove();
+        } else {
+            shareButton.after(menu);
         }
     });
 
-    playButton.parentNode.insertBefore(shareButton, playButton.nextSibling);
+    playButton.parentNode.insertBefore(
+        shareButton,
+        playButton.nextSibling
+    );
 }
 
 function showSituation() {
