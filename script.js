@@ -685,106 +685,178 @@ function showSituation() {
 }
 
 
-function handleAnswer(button) {
+async function handleAnswer(button) {
     let answer = "";
     let selected = "";
+    let position = 0;
 
     if (button.classList.contains("normal")) {
         answer = t().normal;
         selected = "normal";
+        position = 1;
     }
 
     if (button.classList.contains("hmm")) {
         answer = t().hmm;
         selected = "hmm";
+        position = 2;
     }
 
     if (button.classList.contains("red")) {
         answer = t().red;
         selected = "red";
+        position = 3;
     }
 
-    const situation = situations[currentIndex];
-    const votes = situation.votes;
+    const questionId = currentIndex + 1;
 
-    const totalVotes =
-        votes.normal +
-        votes.hmm +
-        votes.red;
+    try {
+        const { data: option, error: optionError } = await supabaseClient
+            .from("options")
+            .select("id")
+            .eq("question_id", questionId)
+            .eq("position", position)
+            .single();
 
-    const percentages = {
-        normal: Math.round((votes.normal / totalVotes) * 100),
-        hmm: Math.round((votes.hmm / totalVotes) * 100),
-        red: Math.round((votes.red / totalVotes) * 100)
-    };
+        if (optionError) {
+            console.error("Ошибка поиска варианта:", optionError);
+            return;
+        }
 
-    const majority =
-        Math.max(
+        const { error: voteError } = await supabaseClient
+            .from("votes")
+            .insert({
+                question_id: questionId,
+                option_id: option.id,
+                user_id: null,
+                has_personal_experience: false
+            });
+
+        if (voteError) {
+            console.error("Ошибка сохранения голоса:", voteError);
+            return;
+        }
+
+        console.log("Flagged: голос сохранён", {
+            questionId,
+            optionId: option.id,
+            answer: selected
+        });
+
+        const { data: votes, error: votesError } = await supabaseClient
+            .from("votes")
+            .select("option_id")
+            .eq("question_id", questionId);
+
+        if (votesError) {
+            console.error("Ошибка загрузки голосов:", votesError);
+            return;
+        }
+
+        const counts = {
+            normal: 0,
+            hmm: 0,
+            red: 0
+        };
+
+        votes.forEach(vote => {
+            if (vote.option_id === option.id && selected === "normal") counts.normal++;
+        });
+
+        const optionIds = await supabaseClient
+            .from("options")
+            .select("id, position")
+            .eq("question_id", questionId);
+
+        if (!optionIds.error) {
+            votes.forEach(vote => {
+                const opt = optionIds.data.find(o => o.id === vote.option_id);
+
+                if (opt?.position === 1) counts.normal++;
+                if (opt?.position === 2) counts.hmm++;
+                if (opt?.position === 3) counts.red++;
+            });
+
+            if (selected === "normal" && counts.normal > 0) counts.normal--;
+        }
+
+        const totalVotes = counts.normal + counts.hmm + counts.red;
+
+        const percentages = {
+            normal: totalVotes ? Math.round((counts.normal / totalVotes) * 100) : 0,
+            hmm: totalVotes ? Math.round((counts.hmm / totalVotes) * 100) : 0,
+            red: totalVotes ? Math.round((counts.red / totalVotes) * 100) : 0
+        };
+
+        const majority = Math.max(
             percentages.normal,
             percentages.hmm,
             percentages.red
         );
 
-    if (percentages[selected] === majority) {
-        score++;
-    }
+        if (percentages[selected] === majority) {
+            score++;
+        }
 
-    const message =
-        percentages[selected] === majority
-            ? t().majority
-            : t().minority;
+        const message =
+            percentages[selected] === majority
+                ? t().majority
+                : t().minority;
 
-    card.innerHTML = `
-        <div class="category">
-            ${t().yourAnswer}
-        </div>
+        card.innerHTML = `
+            <div class="category">
+                ${t().yourAnswer}
+            </div>
 
-        <div style="font-size: 30px; margin: 25px 0;">
-            ${answer}
-        </div>
+            <div style="font-size: 30px; margin: 25px 0;">
+                ${answer}
+            </div>
 
-        <div style="margin-bottom: 20px; color: #999;">
-            ${t().others}
-        </div>
+            <div style="margin-bottom: 20px; color: #999;">
+                ${t().others}
+            </div>
 
-        <div style="text-align: left; line-height: 2;">
-            🟢 ${t().normal.replace("🟢 ", "")} — ${percentages.normal}%<br>
-            🟡 ${t().hmm.replace("🟡 ", "")} — ${percentages.hmm}%<br>
-            🔴 ${t().red.replace("🔴 ", "")} — ${percentages.red}%
-        </div>
+            <div style="text-align: left; line-height: 2;">
+                🟢 ${t().normal.replace("🟢 ", "")} — ${percentages.normal}%<br>
+                🟡 ${t().hmm.replace("🟡 ", "")} — ${percentages.hmm}%<br>
+                🔴 ${t().red.replace("🔴 ", "")} — ${percentages.red}%
+            </div>
 
-        <div style="
-            margin-top: 20px;
-            font-weight: bold;
-            font-size: 16px;
-        ">
-            ${message}
-        </div>
-
-        <button id="nextButton"
-            style="
-                width: 100%;
-                margin-top: 25px;
-                padding: 16px;
-                border: none;
-                border-radius: 14px;
-                background: white;
-                color: black;
-                font-size: 16px;
+            <div style="
+                margin-top: 20px;
                 font-weight: bold;
-                cursor: pointer;
+                font-size: 16px;
             ">
-            ${currentIndex === situations.length - 1
-                ? t().scoreTitle + " →"
-                : t().next}
-        </button>
-    `;
+                ${message}
+            </div>
 
-    document
-        .getElementById("nextButton")
-        .addEventListener("click", nextStep);
+            <button id="nextButton"
+                style="
+                    width: 100%;
+                    margin-top: 25px;
+                    padding: 16px;
+                    border: none;
+                    border-radius: 14px;
+                    background: white;
+                    color: black;
+                    font-size: 16px;
+                    font-weight: bold;
+                    cursor: pointer;
+                ">
+                ${currentIndex === situations.length - 1
+                    ? t().scoreTitle + " →"
+                    : t().next}
+            </button>
+        `;
+
+        document
+            .getElementById("nextButton")
+            .addEventListener("click", nextStep);
+
+    } catch (error) {
+        console.error("Flagged: ошибка:", error);
+    }
 }
-
 
 function nextStep() {
     currentIndex++;
