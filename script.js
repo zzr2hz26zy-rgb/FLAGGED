@@ -547,6 +547,62 @@ function showStartScreen() {
             showSituation();
         });
 }
+function addShareButton() {
+    const playButton = document.getElementById("playButton");
+
+    if (!playButton || document.getElementById("shareButton")) return;
+
+    const shareButton = document.createElement("button");
+    shareButton.id = "shareButton";
+    shareButton.textContent =
+        language === "ru" ? "↗ ПОДЕЛИТЬСЯ" :
+        language === "pl" ? "↗ UDOSTĘPNIJ" :
+        "↗ SHARE";
+
+    shareButton.style.cssText = `
+        width: 100%;
+        padding: 14px;
+        margin-top: 12px;
+        border: 1px solid #444;
+        border-radius: 15px;
+        background: transparent;
+        color: white;
+        font-size: 15px;
+        font-weight: bold;
+        cursor: pointer;
+    `;
+
+    shareButton.addEventListener("click", async () => {
+        const shareData = {
+            title: "FLAGGED",
+            text: "Red Flag or Not? 🚩",
+            url: "https://zzr2hz26zy-rgb.github.io/FLAGGED/"
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (error) {
+                // User cancelled sharing
+            }
+        } else {
+            await navigator.clipboard.writeText(shareData.url);
+            shareButton.textContent =
+                language === "ru" ? "✓ ССЫЛКА СКОПИРОВАНА" :
+                language === "pl" ? "✓ LINK SKOPIOWANY" :
+                "✓ LINK COPIED";
+
+            setTimeout(() => {
+                shareButton.textContent =
+                    language === "ru" ? "↗ ПОДЕЛИТЬСЯ" :
+                    language === "pl" ? "↗ UDOSTĘPNIJ" :
+                    "↗ SHARE";
+            }, 2000);
+        }
+    });
+
+    playButton.parentNode.insertBefore(shareButton, playButton.nextSibling);
+}
 
 function showSituation() {
     const situation = situations[currentIndex];
@@ -775,3 +831,4 @@ function restartGame() {
 createLanguageSelector();
 updateHeader();
 showStartScreen();
+addShareButton();
