@@ -685,6 +685,9 @@ function showSituation() {
 }
 
 
+const flaggedBrowserId = localStorage.getItem("flaggedBrowserId") || crypto.randomUUID();
+localStorage.setItem("flaggedBrowserId", flaggedBrowserId);
+
 async function handleAnswer(button) {
     let answer = "";
     let selected = "";
@@ -728,7 +731,7 @@ async function handleAnswer(button) {
             .insert({
                 question_id: questionId,
                 option_id: option.id,
-                user_id: null,
+                browser_id: flaggedBrowserId,
                 has_personal_experience: false
             });
 
