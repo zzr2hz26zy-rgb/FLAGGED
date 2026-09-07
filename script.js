@@ -735,10 +735,15 @@ async function handleAnswer(button) {
                 has_personal_experience: false
             });
 
-        if (voteError) {
-            console.error("Ошибка сохранения голоса:", voteError);
+    if (voteError) {
+        if (voteError.code === "23505") {
+            console.log("Flagged: этот браузер уже голосовал за этот вопрос.");
             return;
         }
+
+        console.error("Ошибка сохранения голоса:", voteError);
+        return;
+    }
 
         console.log("Flagged: голос сохранён", {
             questionId,
