@@ -540,11 +540,12 @@ function showStartScreen() {
 
     document
         .getElementById("playButton")
-        .addEventListener("click", () => {
+        .addEventListener("click", async () => {
             gameStarted = true;
             currentIndex = 0;
             score = 0;
-            showSituation();
+            await loadAnsweredQuestionIds();
+            showNextUnansweredQuestion();
         });
 }
 function addShareButton() {
@@ -688,6 +689,45 @@ function showSituation() {
 const flaggedBrowserId = localStorage.getItem("flaggedBrowserId") || crypto.randomUUID();
 localStorage.setItem("flaggedBrowserId", flaggedBrowserId);
 
+let answeredQuestionIds = new Set();
+
+async function loadAnsweredQuestionIds() {
+    const { data, error } = await supabaseClient
+        .from("votes")
+        .select("question_id")
+        .eq("browser_id", flaggedBrowserId);
+
+    if (error) {
+        console.error("Flagged: ошибка загрузки отвеченных вопросов:", error);
+        answeredQuestionIds = new Set();
+        return;
+    }
+
+    answeredQuestionIds = new Set(
+        (data || []).map(vote => Number(vote.question_id))
+    );
+
+    console.log(
+        "Flagged: уже отвеченные вопросы:",
+        [...answeredQuestionIds]
+    );
+}
+
+function showNextUnansweredQuestion() {
+    while (
+        currentIndex < situations.length &&
+        answeredQuestionIds.has(currentIndex + 1)
+    ) {
+        currentIndex++;
+    }
+
+    if (currentIndex >= situations.length) {
+        showAllQuestionsCompleted();
+    } else {
+        showSituation();
+    }
+}
+
 async function handleAnswer(button) {
     let answer = "";
     let selected = "";
@@ -738,6 +778,23 @@ async function handleAnswer(button) {
     if (voteError) {
         if (voteError.code === "23505") {
             console.log("Flagged: этот браузер уже голосовал за этот вопрос.");
+
+            answeredQuestionIds.add(questionId);
+
+            card.innerHTML = `
+                <div style="font-size: 20px; text-align: center; padding: 40px 20px;">
+                    ❤️ ${language === "ru"
+                        ? "Вы уже отвечали на этот вопрос."
+                        : language === "pl"
+                            ? "Już odpowiadałeś na to pytanie."
+                            : "You have already answered this question."}
+                </div>
+            `;
+
+            setTimeout(() => {
+                nextStep();
+            }, 700);
+
             return;
         }
 
@@ -750,6 +807,8 @@ async function handleAnswer(button) {
             optionId: option.id,
             answer: selected
         });
+
+    answeredQuestionIds.add(questionId);
 
         const { data: votes, error: votesError } = await supabaseClient
             .from("votes")
@@ -868,14 +927,8 @@ async function handleAnswer(button) {
 
 function nextStep() {
     currentIndex++;
-
-    if (currentIndex >= situations.length) {
-        showFinalResult();
-    } else {
-        showSituation();
-    }
+    showNextUnansweredQuestion();
 }
-
 
 function showFinalResult() {
     const total = situations.length;
@@ -942,10 +995,48 @@ function showFinalResult() {
 }
 
 
-function restartGame() {
+function showAllQuestionsCompleted() {
+    const messages = {
+        ru: {
+            title: "Все доступные вопросы пройдены",
+            text: "Ты уже ответил(а) на все доступные вопросы. Новые вопросы появятся здесь позже."
+        },
+        pl: {
+            title: "Wszystkie dostępne pytania zostały ukończone",
+            text: "Odpowiedziałeś już na wszystkie dostępne pytania. Nowe pytania pojawią się tutaj później."
+        },
+        en: {
+            title: "All available questions completed",
+            text: "You have already answered all available questions. New questions will appear here later."
+        }
+    };
+
+    const message = messages[language] || messages.en;
+
+    card.innerHTML = `
+        <div class="category">🚩 FLAGGED</div>
+
+        <div style="font-size: 32px; margin: 25px 0;">
+            ${message.title}
+        </div>
+
+        <div style="font-size: 18px; line-height: 1.6; color: #999;">
+            ${message.text}
+        </div>
+    `;
+}
+
+async function restartGame() {
     currentIndex = 0;
     score = 0;
-    showSituation();
+
+    await loadAnsweredQuestionIds();
+
+    if (answeredQuestionIds.size >= situations.length) {
+        showAllQuestionsCompleted();
+    } else {
+        showNextUnansweredQuestion();
+    }
 }
 
 
