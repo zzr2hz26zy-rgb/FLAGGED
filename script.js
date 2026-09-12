@@ -113,7 +113,8 @@ async function loadQuestionsFromSupabase() {
     const { data: questions, error: questionsError } = await supabaseClient
         .from("questions")
         .select("*")
-        .order("id", { ascending: true });
+        .eq("status", "published")
+    .order("id", { ascending: true });
 
     if (questionsError) {
         console.error("Flagged: ошибка загрузки вопросов:", questionsError);
