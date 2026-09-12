@@ -248,15 +248,15 @@ function updateHeader() {
 function showStartScreen() {
     const startTexts = {
         en: {
-            intro: "Real situations. One question: would you flag it?",
+            intro: "Real situations. Many questions. What do people think?",
             play: "PLAY →"
         },
         ru: {
-            intro: "Реальные ситуации. Один вопрос: это красный флаг или нет?",
+            intro: "Реальные ситуации. Много вопросов. Что думают люди?",
             play: "ИГРАТЬ →"
         },
         pl: {
-            intro: "Prawdziwe sytuacje. Jedno pytanie: red flag czy nie?",
+            intro: "Prawdziwe sytuacje. Wiele pytań. Co myślą ludzie?",
             play: "GRAJ →"
         }
     };
