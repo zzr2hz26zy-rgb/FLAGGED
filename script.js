@@ -91,7 +91,8 @@ const translations = {
 };
 
 
-const situations = [
+let flaggedCategories = [];
+let situations = [
 
     {
         category: "relationships",
@@ -399,6 +400,72 @@ const situations = [
 ];
 
 
+
+async function loadQuestionsFromSupabase() {
+    const { data: categories, error: categoriesError } = await supabaseClient
+        .from("categories")
+        .select("*");
+
+    if (categoriesError) {
+        console.error("Flagged: ошибка загрузки категорий:", categoriesError);
+        return false;
+    }
+
+    flaggedCategories = categories;
+
+  const categoryMap = new Map(
+        categories.map(category => [category.id, category.slug])
+    );
+
+    const { data: questions, error: questionsError } = await supabaseClient
+        .from("questions")
+        .select("*")
+        .order("id", { ascending: true });
+
+    if (questionsError) {
+        console.error("Flagged: ошибка загрузки вопросов:", questionsError);
+        return false;
+    }
+
+    const { data: options, error: optionsError } = await supabaseClient
+        .from("options")
+        .select("*")
+        .order("question_id", { ascending: true })
+        .order("position", { ascending: true });
+
+    if (optionsError) {
+        console.error("Flagged: ошибка загрузки вариантов:", optionsError);
+        return false;
+    }
+
+    situations = questions.map(question => ({
+        id: question.id,
+        category: categoryMap.get(question.category_id) || "other",
+        text: {
+            en: question.text_en,
+            ru: question.text_ru,
+            pl: question.text_pl
+        },
+        options: options
+            .filter(option => option.question_id === question.id)
+            .map(option => ({
+                id: option.id,
+                position: option.position,
+                en: option.text_en,
+                ru: option.text_ru,
+                pl: option.text_pl
+            })),
+        votes: {
+            normal: 0,
+            hmm: 0,
+            red: 0
+        }
+    }));
+
+    console.log("Flagged: вопросы загружены из Supabase:", situations.length);
+    return true;
+}
+
 let currentIndex = 0;
 let score = 0;
 let gameStarted = false;
@@ -414,15 +481,17 @@ function t() {
 
 
 function categoryName(category) {
-    const names = {
-        relationships: t().relationships,
-        friendship: t().friendship,
-        social: t().social,
-        work: t().work,
-        everyday: t().everyday
-    };
+  const foundCategory = flaggedCategories.find(
+    item => item.slug === category
+  );
 
-    return names[category];
+  if (!foundCategory) {
+    return category;
+  }
+
+  const localizedName = foundCategory[`name_${language}`];
+
+  return localizedName || foundCategory.name || category;
 }
 
 
@@ -539,15 +608,24 @@ function showStartScreen() {
     `;
 
     document
-        .getElementById("playButton")
-        .addEventListener("click", async () => {
-            gameStarted = true;
-            currentIndex = 0;
-            score = 0;
-            await loadAnsweredQuestionIds();
-            showNextUnansweredQuestion();
-        });
+  .getElementById("playButton")
+  .addEventListener("click", async () => {
+    gameStarted = true;
+    currentIndex = 0;
+    score = 0;
+
+    const questionsLoaded = await loadQuestionsFromSupabase();
+
+    if (!questionsLoaded) {
+      console.error("Flagged: не удалось загрузить вопросы из Supabase");
+      return;
+    }
+
+    await loadAnsweredQuestionIds();
+    showNextUnansweredQuestion();
+  });
 }
+
 function addShareButton() {
     const playButton = document.getElementById("playButton");
     if (!playButton || document.getElementById("shareButton")) return;
@@ -716,7 +794,7 @@ async function loadAnsweredQuestionIds() {
 function showNextUnansweredQuestion() {
     while (
         currentIndex < situations.length &&
-        answeredQuestionIds.has(currentIndex + 1)
+        answeredQuestionIds.has(situations[currentIndex].id)
     ) {
         currentIndex++;
     }
@@ -751,7 +829,7 @@ async function handleAnswer(button) {
         position = 3;
     }
 
-    const questionId = currentIndex + 1;
+    const questionId = situations[currentIndex].id;
 
     try {
         const { data: option, error: optionError } = await supabaseClient
