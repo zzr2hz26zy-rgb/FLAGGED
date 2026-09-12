@@ -134,6 +134,7 @@ async function loadQuestionsFromSupabase() {
 
     situations = questions.map(question => ({
         id: question.id,
+  type: question.type,
         category: categoryMap.get(question.category_id) || "other",
         text: {
             en: question.text_en,
