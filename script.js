@@ -436,10 +436,21 @@ function showSituation() {
         </p>
 
         <div class="buttons">
-            <button class="normal">${t().normal}</button>
-            <button class="hmm">${t().hmm}</button>
-            <button class="red">${t().red}</button>
-        </div>
+        ${
+          situation.type === "POLL"
+            ? situation.options
+                .map(
+                  option =>
+                    `<button class="poll-option" data-option-id="${option.id}">${option[language]}</button>`
+                )
+                .join("")
+            : `
+              <button class="normal">${t().normal}</button>
+              <button class="hmm">${t().hmm}</button>
+              <button class="red">${t().red}</button>
+            `
+        }
+      </div>
 
 <div class="progress-info">
     <span>${currentIndex + 1} / ${situations.length}</span>
