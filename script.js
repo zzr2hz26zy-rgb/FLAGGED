@@ -477,6 +477,7 @@ localStorage.setItem("flaggedBrowserId", flaggedBrowserId);
 let answeredQuestionIds = new Set();
 let pendingAnswer = null;
 let pendingPersonalExperience = null;
+let pendingAnswerSelection = null;
 
 async function loadAnsweredQuestionIds() {
     const { data, error } = await supabaseClient
@@ -517,6 +518,77 @@ function showNextUnansweredQuestion() {
 
 async function handleAnswer(button) {
   const situation = situations[currentIndex];
+
+    if (
+        situation.type === "SITUATION" &&
+        situation.hasPersonalExperience &&
+        pendingPersonalExperience === null
+    ) {
+        pendingAnswerSelection =
+            button.classList.contains("normal")
+                ? "normal"
+                : button.classList.contains("hmm")
+                ? "hmm"
+                : "red";
+
+        card.innerHTML += `
+          <div style="text-align:center; margin-top:20px;">
+            <div style="margin-bottom:12px; font-weight:bold;">
+              ${
+                language === "ru"
+                  ? "У тебя был личный опыт этой ситуации?"
+                  : language === "pl"
+                  ? "Czy masz osobiste doświadczenie w tej sytuacji?"
+                  : "Have you personally experienced this situation?"
+              }
+            </div>
+
+            <button id="personalExperienceYes"
+              style="width:100%; padding:14px; margin-top:6px; border:none; border-radius:10px; background:#237a3b; color:white; font-weight:bold; cursor:pointer;">
+              ${
+                language === "ru"
+                  ? "ДА, БЫЛ ОПЫТ"
+                  : language === "pl"
+                  ? "TAK, MAM TAKIE DOŚWIADCZENIE"
+                  : "YES, I HAVE"
+              }
+            </button>
+
+            <button id="personalExperienceNo"
+              style="width:100%; padding:14px; margin-top:8px; border:none; border-radius:10px; background:#555; color:white; font-weight:bold; cursor:pointer;">
+              ${
+                language === "ru"
+                  ? "НЕТ, ТОЛЬКО МОЁ МНЕНИЕ"
+                  : language === "pl"
+                  ? "NIE, TO TYLKO MOJA OPINIA"
+                  : "NO, JUST MY OPINION"
+              }
+            </button>
+          </div>
+        `;
+
+        const continueAnswer = (experience) => {
+            pendingPersonalExperience = experience;
+
+            const selected = pendingAnswerSelection;
+
+            handleAnswer({
+                classList: {
+                    contains: (name) => name === selected
+                }
+            });
+        };
+
+        document
+            .getElementById("personalExperienceYes")
+            .addEventListener("click", () => continueAnswer(true));
+
+        document
+            .getElementById("personalExperienceNo")
+            .addEventListener("click", () => continueAnswer(false));
+
+        return;
+    }
     let answer = "";
     let selected = "";
     let position = 0;
@@ -688,7 +760,7 @@ async function handleAnswer(button) {
                 question_id: questionId,
                 option_id: option.id,
                 browser_id: flaggedBrowserId,
-                has_personal_experience: false
+                has_personal_experience: pendingPersonalExperience ?? false
             });
 
     if (voteError) {
