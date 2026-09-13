@@ -1,0 +1,9 @@
+-- FLAGGED
+-- RELATIONSHIPS content migration
+-- The approved Relationships content was already applied directly in Supabase.
+-- Full current data backup:
+-- supabase/backups/relationships.json
+--
+-- Approved question IDs:
+-- 1, 3, 4, 6, 7, 8, 10
+-- All are SITUATION with personal experience enabled.

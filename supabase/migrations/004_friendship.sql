@@ -1,0 +1,9 @@
+-- FLAGGED
+-- FRIENDSHIP content migration
+-- The approved Friendship content was already applied directly in Supabase.
+-- Full current data backup:
+-- supabase/backups/friendship.json
+--
+-- Approved question IDs:
+-- 11, 12, 13, 14, 15
+-- All are SITUATION with personal experience enabled.
