@@ -513,6 +513,7 @@ function showNextUnansweredQuestion() {
 }
 
 async function handleAnswer(button) {
+  const situation = situations[currentIndex];
     let answer = "";
     let selected = "";
     let position = 0;
@@ -536,6 +537,134 @@ async function handleAnswer(button) {
     }
 
     const questionId = situations[currentIndex].id;
+
+  // POLL: отдельная логика голосования и результатов
+  if (situations[currentIndex].type === "POLL") {
+    const optionId = Number(button.dataset.optionId);
+
+    if (!optionId) {
+      console.error("Не найден option_id для POLL");
+      return;
+    }
+
+    const { data: existingVote, error: existingVoteError } =
+      await supabaseClient
+        .from("votes")
+        .select("id")
+        .eq("question_id", questionId)
+        .eq("browser_id", flaggedBrowserId)
+        .maybeSingle();
+
+    if (existingVoteError) {
+      console.error("Ошибка проверки голоса POLL:", existingVoteError);
+      return;
+    }
+
+    if (!existingVote) {
+      const { error: pollVoteError } = await supabaseClient
+        .from("votes")
+        .insert({
+          question_id: questionId,
+          option_id: optionId,
+          browser_id: flaggedBrowserId,
+          has_personal_experience: false
+        });
+
+      if (pollVoteError) {
+        console.error("Ошибка сохранения ответа POLL:", pollVoteError);
+        return;
+      }
+
+      console.log("Flagged: новый ответ POLL сохранён:", {
+        questionId,
+        optionId
+      });
+    } else {
+      console.log("Flagged: POLL уже был отвечен — показываем результаты.");
+    }
+
+    answeredQuestionIds.add(questionId);
+
+    const { data: pollVotes, error: pollResultsError } =
+      await supabaseClient
+        .from("votes")
+        .select("option_id")
+        .eq("question_id", questionId);
+
+    if (pollResultsError) {
+      console.error("Ошибка загрузки результатов POLL:", pollResultsError);
+      return;
+    }
+
+    const totalVotes = pollVotes.length;
+    const counts = {};
+
+    situation.options.forEach(option => {
+      counts[option.id] = 0;
+    });
+
+    pollVotes.forEach(vote => {
+      if (counts[vote.option_id] !== undefined) {
+        counts[vote.option_id]++;
+      }
+    });
+
+    card.innerHTML = `
+      <div class="category">
+        ${categoryName(situation.category)}
+      </div>
+
+      <p class="situation">
+        ${situation.text[language]}
+      </p>
+
+      <p class="question">
+        ${t().question}
+      </p>
+
+      <div class="poll-results">
+        ${situation.options
+          .map(option => {
+            const count = counts[option.id] || 0;
+            const percentage = totalVotes
+              ? Math.round((count / totalVotes) * 100)
+              : 0;
+
+            return `
+              <div style="margin:14px 0;">
+                <div style="display:flex; justify-content:space-between; gap:10px; margin-bottom:6px;">
+                  <span>${option[language]}</span>
+                  <strong>${percentage}%</strong>
+                </div>
+
+                <div style="width:100%; height:10px; background:rgba(255,255,255,0.12); border-radius:6px; overflow:hidden;">
+                  <div style="width:${percentage}%; height:100%; background:#fff; border-radius:6px;"></div>
+                </div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+
+      <button class="next-button" style="margin-top:20px;">
+        ${
+          language === "ru"
+            ? "Дальше"
+            : language === "pl"
+            ? "Dalej"
+            : "Next"
+        }
+      </button>
+    `;
+
+    const nextButton = card.querySelector(".next-button");
+
+    nextButton.addEventListener("click", () => {
+      nextStep();
+    });
+
+    return;
+  }
 
     try {
         const { data: option, error: optionError } = await supabaseClient
