@@ -135,6 +135,7 @@ async function loadQuestionsFromSupabase() {
     situations = questions.map(question => ({
         id: question.id,
   type: question.type,
+  hasPersonalExperience: question.has_personal_experience,
         category: categoryMap.get(question.category_id) || "other",
         text: {
             en: question.text_en,
@@ -474,6 +475,8 @@ const flaggedBrowserId = localStorage.getItem("flaggedBrowserId") || crypto.rand
 localStorage.setItem("flaggedBrowserId", flaggedBrowserId);
 
 let answeredQuestionIds = new Set();
+let pendingAnswer = null;
+let pendingPersonalExperience = null;
 
 async function loadAnsweredQuestionIds() {
     const { data, error } = await supabaseClient
