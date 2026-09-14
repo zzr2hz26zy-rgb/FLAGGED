@@ -1,0 +1,9 @@
+-- FLAGGED
+-- MONEY content migration
+-- The approved Money content was already applied directly in Supabase.
+-- Full current data backup:
+-- supabase/backups/money.json
+--
+-- Approved question IDs:
+-- 32, 33, 37, 54, 74
+-- All are SITUATION with personal experience enabled.
