@@ -322,6 +322,586 @@ function showStartScreen() {
   });
 }
 
+
+async function showQuestionComposer() {
+
+  if (!flaggedCategories.length) {
+    const loaded = await loadQuestionsFromSupabase();
+
+    if (!loaded) {
+      alert(
+        language === "ru"
+          ? "Не удалось загрузить категории."
+          : language === "pl"
+          ? "Nie udało się załadować kategorii."
+          : "Could not load categories."
+      );
+      return;
+    }
+  }
+
+  const categoryKeywords = {
+    relationships: [
+      "партнер", "партнёр", "муж", "жена", "отношен", "пар", "partner",
+      "mąż", "żona", "relacj"
+    ],
+    family: [
+      "семь", "родител", "ребен", "ребён", "сын", "дочь", "доч", "мам", "пап",
+      "rodzin", "dziecko", "rodzic"
+    ],
+    friendship: [
+      "друг", "подруг", "дружб", "приетел", "при́ятель",
+      "przyjac", "przyjaź"
+    ],
+    psychology: [
+      "чувств", "страх", "тревог", "пережив", "самооцен", "психолог", "эмоци",
+      "uczuc", "lęk", "emocj", "psycholog"
+    ],
+    money: [
+      "деньг", "доход", "зарплат", "долг", "деньги", "расход", "бюджет",
+      "pienią", "dochód", "dług", "budżet"
+    ],
+    work: [
+      "работ", "началь", "коллег", "зарплат", "карьер", "офис",
+      "praca", "szef", "kolega", "karier"
+    ],
+    social: [
+      "обще", "люд", "соци", "толп", "обществен",
+      "społ", "ludz", "towarz"
+    ],
+    politics: [
+      "полит", "выбор", "государ", "президент", "правитель",
+      "polity", "wybory", "rząd", "prezydent"
+    ],
+    travel: [
+      "путешеств", "поездк", "отпуск", "самолёт", "самолет", "отел",
+      "podró", "wakac", "hotel", "lot"
+    ],
+    education: [
+      "учёб", "учеб", "университет", "школ", "образован", "экзамен",
+      "nauk", "szkoł", "stud", "egzamin"
+    ],
+    beauty: [
+      "волос", "красот", "макияж", "кож", "маникюр", "внешност",
+      "włos", "urod", "makija", "skór", "manikiur"
+    ],
+    sport: [
+      "спорт", "трениров", "фитнес", "зал", "бег", "йог",
+      "sport", "trening", "fitness", "biegan"
+    ],
+    entertainment: [
+      "фильм", "сериал", "музык", "игр", "кино", "развлеч",
+      "film", "serial", "muzyk", "gra", "rozryw"
+    ],
+    technology: [
+      "телефон", "компьютер", "технолог", "интернет", "приложен", "ai",
+      "telefon", "komputer", "technolog", "internet", "aplikac"
+    ],
+    health: [
+      "здоров", "болезн", "врач", "лечение", "самочувств",
+      "zdrow", "chorob", "lekar", "leczen", "samopocz"
+    ],
+    everyday: [
+      "быт", "дом", "магазин", "сосед", "повседнев", "уборк",
+      "dom", "zakup", "sąsiad", "codzien"
+    ]
+  };
+
+  const getCategorySuggestions = (questionText) => {
+    const normalizedText = questionText.toLowerCase();
+
+    const scored = flaggedCategories.map(category => {
+      const keywords = categoryKeywords[category.slug] || [];
+
+      const score = keywords.reduce(
+        (total, keyword) =>
+          total + (normalizedText.includes(keyword.toLowerCase()) ? 1 : 0),
+        0
+      );
+
+      return {
+        ...category,
+        score
+      };
+    });
+
+    const matches = scored
+      .filter(category => category.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    if (matches.length === 0) {
+      return flaggedCategories.slice(0, 3).map(category => ({
+        ...category,
+        score: 0
+      }));
+    }
+
+    return matches;
+  };
+
+  const renderComposerFields = (type) => {
+    const optionsBlock =
+      type === "QUESTION"
+        ? ""
+        : `
+          <div id="questionOptionsBlock" style="margin-top:18px;">
+            <p style="margin-bottom:8px;">
+              ${
+                language === "ru"
+                  ? "Варианты ответа"
+                  : language === "pl"
+                  ? "Opcje odpowiedzi"
+                  : "Answer options"
+              }
+            </p>
+
+            ${[1, 2, 3, 4, 5]
+              .map(
+                position => `
+                  <input
+                    id="submissionOption${position}"
+                    type="text"
+                    placeholder="${
+                      language === "ru"
+                        ? `Вариант ${position}`
+                        : language === "pl"
+                        ? `Opcja ${position}`
+                        : `Option ${position}`
+                    }"
+                    style="width:100%; box-sizing:border-box; margin-top:8px; padding:12px; border-radius:10px;"
+                  >
+                `
+              )
+              .join("")}
+          </div>
+        `;
+
+    const experienceBlock =
+      type === "SITUATION"
+        ? `
+          <label
+            style="
+              display:flex;
+              align-items:center;
+              gap:10px;
+              margin-top:16px;
+              line-height:1.4;
+            "
+          >
+            <input id="submissionPersonalExperience" type="checkbox">
+            <span>
+              ${
+                language === "ru"
+                  ? "У этой ситуации может быть личный опыт"
+                  : language === "pl"
+                  ? "Ta sytuacja może dotyczyć osobistego doświadczenia"
+                  : "This situation can include personal experience"
+              }
+            </span>
+          </label>
+        `
+        : "";
+
+    const categorySuggestions = getCategorySuggestions(
+      document.getElementById("userQuestionText")?.value || ""
+    );
+
+    const recommendedCategory =
+      categorySuggestions.length > 0
+        ? categorySuggestions[0].id
+        : "";
+
+    const categoryBlock = `
+      <div
+        id="categorySuggestionBlock"
+        style="
+          margin-top:18px;
+          padding:14px;
+          border-radius:12px;
+          border:1px solid rgba(255,255,255,0.12);
+        "
+      >
+        <p style="margin:0 0 10px 0;">
+          ${
+            language === "ru"
+              ? "Категория"
+              : language === "pl"
+              ? "Kategoria"
+              : "Category"
+          }
+        </p>
+
+        <select
+          id="submissionPrimaryCategory"
+          style="
+            width:100%;
+            padding:12px;
+            border-radius:10px;
+            box-sizing:border-box;
+          "
+        >
+          <option value="">
+            ${
+              language === "ru"
+                ? "Выберите категорию"
+                : language === "pl"
+                ? "Wybierz kategorię"
+                : "Choose a category"
+            }
+          </option>
+
+          ${flaggedCategories
+            .map(
+              category => `
+                <option
+                  value="${category.id}"
+                  ${category.id === recommendedCategory ? "selected" : ""}
+                >
+                  ${category.icon || ""} ${
+                    category[`name_${language}`] || category.name
+                  }
+                </option>
+              `
+            )
+            .join("")}
+        </select>
+      </div>
+    `;
+
+    return `
+      <div class="category">FLAGGED</div>
+
+      <h2 style="text-align:center;">
+        ${
+          language === "ru"
+            ? "Создай свой вопрос"
+            : language === "pl"
+            ? "Stwórz własne pytanie"
+            : "Create your own question"
+        }
+      </h2>
+
+      <textarea
+        id="userQuestionText"
+        rows="6"
+        placeholder="${
+          language === "ru"
+            ? "Напиши вопрос или ситуацию..."
+            : language === "pl"
+            ? "Napisz pytanie lub sytuację..."
+            : "Write a question or situation..."
+        }"
+        style="
+          width:100%;
+          box-sizing:border-box;
+          margin-top:12px;
+          padding:14px;
+          border-radius:10px;
+          resize:vertical;
+        "
+      ></textarea>
+
+      <select
+        id="userQuestionType"
+        style="
+          width:100%;
+          margin-top:12px;
+          padding:14px;
+          border-radius:10px;
+        "
+      >
+        <option value="SITUATION" ${type === "SITUATION" ? "selected" : ""}>SITUATION</option>
+        <option value="POLL" ${type === "POLL" ? "selected" : ""}>POLL</option>
+        <option value="QUESTION" ${type === "QUESTION" ? "selected" : ""}>QUESTION</option>
+      </select>
+
+      <div id="dynamicSubmissionFields">
+        ${optionsBlock}
+        ${experienceBlock}
+      </div>
+
+      ${categoryBlock}
+
+      <button
+        id="saveDraftButton"
+        type="button"
+        style="
+          width:100%;
+          margin-top:18px;
+          padding:14px;
+          border:none;
+          border-radius:10px;
+          cursor:pointer;
+        "
+      >
+        ${
+          language === "ru"
+            ? "Сохранить как черновик"
+            : language === "pl"
+            ? "Zapisz jako wersję roboczą"
+            : "Save as draft"
+        }
+      </button>
+
+      <button
+        id="backToGameButton"
+        type="button"
+        style="
+          width:100%;
+          margin-top:8px;
+          padding:12px;
+          border:none;
+          border-radius:10px;
+          cursor:pointer;
+        "
+      >
+        ${
+          language === "ru"
+            ? "Назад"
+            : language === "pl"
+            ? "Wróć"
+            : "Back"
+        }
+      </button>
+    `;
+  };
+
+  const render = (type = "SITUATION") => {
+    card.innerHTML = renderComposerFields(type);
+
+    document
+      .getElementById("userQuestionType")
+      .addEventListener("change", event => {
+        render(event.target.value);
+      });
+
+    let categoryWasChangedByUser = false;
+
+    document
+      .getElementById("submissionPrimaryCategory")
+      .addEventListener("change", () => {
+        categoryWasChangedByUser = true;
+      });
+
+    document
+      .getElementById("userQuestionText")
+      .addEventListener("input", event => {
+        if (categoryWasChangedByUser) return;
+
+        const suggestions = getCategorySuggestions(event.target.value);
+
+        if (suggestions.length > 0) {
+          document.getElementById("submissionPrimaryCategory").value =
+            suggestions[0].id;
+        }
+      });
+
+
+
+    document
+      .getElementById("backToGameButton")
+      .addEventListener("click", () => {
+        showNextUnansweredQuestion();
+      });
+
+    document
+      .getElementById("saveDraftButton")
+      .addEventListener("click", async () => {
+        const text = document
+          .getElementById("userQuestionText")
+          .value
+          .trim();
+
+        const selectedType = document.getElementById("userQuestionType").value;
+
+        const selectedCategoryId = Number(
+          document.getElementById("submissionPrimaryCategory").value
+        );
+
+        if (!text) {
+          alert(
+            language === "ru"
+              ? "Сначала напиши вопрос."
+              : language === "pl"
+              ? "Najpierw napisz pytanie."
+              : "Write a question first."
+          );
+          return;
+        }
+
+        const {
+          data: { user },
+          error: userError
+        } = await supabaseClient.auth.getUser();
+
+        if (userError || !user) {
+          if (userError && userError.name !== "AuthSessionMissingError") {
+            console.error("Ошибка проверки пользователя:", userError);
+          }
+
+          alert(
+            language === "ru"
+              ? "Для создания собственного вопроса понадобится аккаунт."
+              : language === "pl"
+              ? "Do tworzenia własnych pytań potrzebne będzie konto."
+              : "An account will be required to create your own question."
+          );
+          return;
+        }
+
+        const options =
+          selectedType === "QUESTION"
+            ? []
+            : [1, 2, 3, 4, 5]
+                .map(position => ({
+                  position,
+                  text: document
+                    .getElementById("submissionOption" + position)
+                    ?.value
+                    .trim()
+                }))
+                .filter(option => option.text);
+
+        const hasPersonalExperience =
+          selectedType === "SITUATION"
+            ? document.getElementById("submissionPersonalExperience")?.checked ??
+              false
+            : false;
+
+        const submissionPayload = {
+          created_by: user.id,
+          text_ru: language === "ru" ? text : null,
+          text_en: language === "en" ? text : null,
+          text_pl: language === "pl" ? text : null,
+          type: selectedType,
+          is_anonymous: false,
+          has_personal_experience: hasPersonalExperience,
+          moderation_status: "DRAFT"
+        };
+
+        if (!selectedCategoryId) {
+          alert(
+            language === "ru"
+              ? "Выберите категорию."
+              : language === "pl"
+              ? "Wybierz kategorię."
+              : "Choose a category."
+          );
+          return;
+        }
+
+        const {
+          data: submission,
+          error: submissionError
+        } = await supabaseClient
+          .from("question_submissions")
+          .insert(submissionPayload)
+          .select("id")
+          .single();
+
+        if (submissionError) {
+          console.error("Ошибка сохранения черновика:", submissionError);
+          alert(
+            language === "ru"
+              ? "Не удалось сохранить черновик."
+              : language === "pl"
+              ? "Nie udało się zapisać wersji roboczej."
+              : "The draft could not be saved."
+          );
+          return;
+        }
+
+        const { error: categoryError } = await supabaseClient
+          .from("submission_categories")
+          .insert({
+            submission_id: submission.id,
+            category_id: selectedCategoryId,
+            is_primary: true
+          });
+
+        if (categoryError) {
+          console.error(
+            "Ошибка сохранения категории черновика:",
+            categoryError
+          );
+
+          await supabaseClient
+            .from("question_submissions")
+            .delete()
+            .eq("id", submission.id);
+
+          alert(
+            language === "ru"
+              ? "Не удалось сохранить категорию."
+              : language === "pl"
+              ? "Nie udało się zapisać kategorii."
+              : "The category could not be saved."
+          );
+          return;
+        }
+
+        if (options.length > 0) {
+          const optionRows = options.map(option => ({
+            submission_id: submission.id,
+            position: option.position,
+            text_ru: language === "ru" ? option.text : null,
+            text_en: language === "en" ? option.text : null,
+            text_pl: language === "pl" ? option.text : null
+          }));
+
+          const { error: optionsError } = await supabaseClient
+            .from("question_submission_options")
+            .insert(optionRows);
+
+          if (optionsError) {
+            console.error(
+              "Ошибка сохранения вариантов черновика:",
+              optionsError
+            );
+
+            await supabaseClient
+              .from("question_submissions")
+              .delete()
+              .eq("id", submission.id);
+
+            alert(
+              language === "ru"
+                ? "Не удалось сохранить варианты ответа."
+                : language === "pl"
+                ? "Nie udało się zapisać opcji odpowiedzi."
+                : "The answer options could not be saved."
+            );
+            return;
+          }
+        }
+
+        console.log("Flagged: черновик сохранён", {
+          submissionId: submission.id,
+          createdBy: user.id,
+          type: selectedType,
+          options,
+          hasPersonalExperience
+        });
+
+        alert(
+          language === "ru"
+            ? "Черновик сохранён."
+            : language === "pl"
+            ? "Wersja robocza została zapisana."
+            : "Draft saved."
+        );
+      });
+  };
+
+  render("SITUATION");
+}
+
+
+document
+  .getElementById("createQuestionButton")
+  ?.addEventListener("click", showQuestionComposer);
+
 function addShareButton() {
     const playButton = document.getElementById("playButton");
     if (!playButton || document.getElementById("shareButton")) return;
@@ -920,3 +1500,4 @@ createLanguageSelector();
 updateHeader();
 showStartScreen();
 addShareButton();
+
