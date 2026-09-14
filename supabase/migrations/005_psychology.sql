@@ -1,0 +1,9 @@
+-- FLAGGED
+-- PSYCHOLOGY content migration
+-- The approved Psychology content was already applied directly in Supabase.
+-- Full current data backup:
+-- supabase/backups/psychology.json
+--
+-- Approved question IDs:
+-- 42, 48, 51, 56, 68
+-- All are SITUATION with personal experience enabled.
