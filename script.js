@@ -902,6 +902,810 @@ document
   .getElementById("createQuestionButton")
   ?.addEventListener("click", showQuestionComposer);
 
+
+async function showAuthComposer() {
+  const renderAuth = (mode = "signin") => {
+    const isSignUp = mode === "signup";
+
+    card.innerHTML = `
+      <div class="category">FLAGGED</div>
+
+      <h2 style="text-align:center;">
+        ${
+          isSignUp
+            ? language === "ru"
+              ? "Создать аккаунт"
+              : language === "pl"
+              ? "Utwórz konto"
+              : "Create account"
+            : language === "ru"
+            ? "Войти в Flagged"
+            : language === "pl"
+            ? "Zaloguj się do Flagged"
+            : "Sign in to Flagged"
+        }
+      </h2>
+
+      <input
+        id="authEmail"
+        type="email"
+        autocomplete="email"
+        placeholder="Email"
+        style="
+          width:100%;
+          box-sizing:border-box;
+          margin-top:12px;
+          padding:14px;
+          border-radius:10px;
+        "
+      >
+
+      <input
+        id="authPassword"
+        type="password"
+        autocomplete="${isSignUp ? "new-password" : "current-password"}"
+        placeholder="${
+          language === "ru"
+            ? "Пароль"
+            : language === "pl"
+            ? "Hasło"
+            : "Password"
+        }"
+        style="
+          width:100%;
+          box-sizing:border-box;
+          margin-top:10px;
+          padding:14px;
+          border-radius:10px;
+        "
+      >
+
+      ${
+        isSignUp
+          ? `
+            <input
+              id="authPasswordConfirm"
+              type="password"
+              autocomplete="new-password"
+              placeholder="${
+                language === "ru"
+                  ? "Подтвердите пароль"
+                  : language === "pl"
+                  ? "Potwierdź hasło"
+                  : "Confirm password"
+              }"
+              style="
+                width:100%;
+                box-sizing:border-box;
+                margin-top:10px;
+                padding:14px;
+                border-radius:10px;
+              "
+            >
+          `
+          : ""
+      }
+
+      <button
+        id="${isSignUp ? "signUpButton" : "signInButton"}"
+        type="button"
+        style="
+          width:100%;
+          margin-top:16px;
+          padding:14px;
+          border:none;
+          border-radius:10px;
+          cursor:pointer;
+          font-weight:600;
+        "
+      >
+        ${
+          isSignUp
+            ? language === "ru"
+              ? "Создать аккаунт"
+              : language === "pl"
+              ? "Utwórz konto"
+              : "Create account"
+            : language === "ru"
+            ? "Войти"
+            : language === "pl"
+            ? "Zaloguj się"
+            : "Sign in"
+        }
+      </button>
+
+      <button
+        id="authModeSwitchButton"
+        type="button"
+        style="
+          width:100%;
+          margin-top:10px;
+          padding:12px;
+          border:1px solid #444;
+          border-radius:10px;
+          background:transparent;
+          color:inherit;
+          cursor:pointer;
+        "
+      >
+        ${
+          isSignUp
+            ? language === "ru"
+              ? "Уже есть аккаунт? Войти"
+              : language === "pl"
+              ? "Masz już konto? Zaloguj się"
+              : "Already have an account? Sign in"
+            : language === "ru"
+            ? "Нет аккаунта? Создать аккаунт"
+            : language === "pl"
+            ? "Nie masz konta? Utwórz konto"
+            : "Don't have an account? Create one"
+        }
+      </button>
+
+      <button
+        id="backFromAuthButton"
+        type="button"
+        style="
+          width:100%;
+          margin-top:8px;
+          padding:12px;
+          border:none;
+          border-radius:10px;
+          cursor:pointer;
+        "
+      >
+        ${
+          language === "ru"
+            ? "Назад"
+            : language === "pl"
+            ? "Wróć"
+            : "Back"
+        }
+      </button>
+    `;
+
+    const getCredentials = () => {
+      const email = document.getElementById("authEmail").value.trim();
+      const password = document.getElementById("authPassword").value;
+
+      if (!email || !password) {
+        alert(
+          language === "ru"
+            ? "Введите email и пароль."
+            : language === "pl"
+            ? "Wpisz email i hasło."
+            : "Enter your email and password."
+        );
+        return null;
+      }
+
+      return { email, password };
+    };
+
+    document
+      .getElementById("authModeSwitchButton")
+      .addEventListener("click", () => {
+        renderAuth(isSignUp ? "signin" : "signup");
+      });
+
+    document
+      .getElementById("backFromAuthButton")
+      .addEventListener("click", () => {
+        showNextUnansweredQuestion();
+      });
+
+    if (isSignUp) {
+      document
+        .getElementById("signUpButton")
+        .addEventListener("click", async () => {
+          const credentials = getCredentials();
+          if (!credentials) return;
+
+          const passwordConfirm = document
+            .getElementById("authPasswordConfirm")
+            .value;
+
+          if (!passwordConfirm) {
+            alert(
+              language === "ru"
+                ? "Подтвердите пароль."
+                : language === "pl"
+                ? "Potwierdź hasło."
+                : "Confirm your password."
+            );
+            return;
+          }
+
+          if (credentials.password !== passwordConfirm) {
+            alert(
+              language === "ru"
+                ? "Пароли не совпадают."
+                : language === "pl"
+                ? "Hasła nie są takie same."
+                : "Passwords do not match."
+            );
+            return;
+          }
+
+          const { data, error } = await supabaseClient.auth.signUp(
+            credentials
+          );
+
+          if (error) {
+            console.error("Ошибка регистрации:", error);
+
+            alert(
+              language === "ru"
+                ? error.message
+                : language === "pl"
+                ? "Nie udało się utworzyć konta."
+                : "Could not create the account."
+            );
+            return;
+          }
+
+          if (!data.session) {
+            alert(
+              language === "ru"
+                ? "Аккаунт создан. Проверь email для подтверждения."
+                : language === "pl"
+                ? "Konto zostało utworzone. Sprawdź email, aby je potwierdzić."
+                : "Account created. Check your email for confirmation."
+            );
+          } else {
+            alert(
+              language === "ru"
+                ? "Аккаунт создан. Вы вошли в Flagged."
+                : language === "pl"
+                ? "Konto utworzone. Zalogowano do Flagged."
+                : "Account created. You are now signed in."
+            );
+
+            showNextUnansweredQuestion();
+          }
+        });
+    } else {
+      document
+        .getElementById("signInButton")
+        .addEventListener("click", async () => {
+          const credentials = getCredentials();
+          if (!credentials) return;
+
+          const { error } = await supabaseClient.auth.signInWithPassword(
+            credentials
+          );
+
+          if (error) {
+            console.error("Ошибка входа:", error);
+
+            alert(
+              language === "ru"
+                ? "Не удалось войти. Проверь email и пароль."
+                : language === "pl"
+                ? "Nie udało się zalogować. Sprawdź email i hasło."
+                : "Sign in failed. Check your email and password."
+            );
+            return;
+          }
+
+          alert(
+            language === "ru"
+              ? "Вы вошли в Flagged."
+              : language === "pl"
+              ? "Zalogowano do Flagged."
+              : "You are now signed in to Flagged."
+          );
+
+          showNextUnansweredQuestion();
+        });
+    }
+  };
+
+  renderAuth("signin");
+}
+
+
+document
+  .getElementById("authButton")
+  ?.addEventListener("click", showAuthComposer);
+
+document
+  .getElementById("moderationButton")
+  ?.addEventListener("click", showModerationPanel);
+
+initModerationAccess();
+
+
+async function initModerationAccess() {
+  const moderationButton =
+    document.getElementById("moderationButton");
+
+  if (!moderationButton) return;
+
+  const { data, error } =
+    await supabaseClient.rpc("is_moderator_or_admin");
+
+  if (error) {
+    console.error("Ошибка проверки прав модератора:", error);
+    return;
+  }
+
+  if (data === true) {
+    moderationButton.style.display = "block";
+  }
+}
+
+
+async function showModerationPanel() {
+  const { data, error } = await supabaseClient.rpc(
+    "get_pending_question_submissions"
+  );
+
+  if (error) {
+    console.error("Ошибка загрузки очереди модерации:", error);
+
+    alert(
+      language === "ru"
+        ? "Не удалось загрузить очередь модерации."
+        : language === "pl"
+        ? "Nie udało się załadować kolejki moderacji."
+        : "Could not load the moderation queue."
+    );
+    return;
+  }
+
+  const submissions = Array.isArray(data) ? data : [];
+
+  if (submissions.length === 0) {
+    card.innerHTML = `
+      <div class="category">FLAGGED</div>
+
+      <h2 style="text-align:center;">
+        ${
+          language === "ru"
+            ? "Модерация"
+            : language === "pl"
+            ? "Moderacja"
+            : "Moderation"
+        }
+      </h2>
+
+      <p class="situation" style="text-align:center;">
+        ${
+          language === "ru"
+            ? "Новых заявок нет."
+            : language === "pl"
+            ? "Brak nowych zgłoszeń."
+            : "No pending submissions."
+        }
+      </p>
+
+      <button
+        id="backFromModerationButton"
+        type="button"
+        style="
+          width:100%;
+          margin-top:18px;
+          padding:14px;
+          border:none;
+          border-radius:10px;
+          cursor:pointer;
+        "
+      >
+        ${
+          language === "ru"
+            ? "Назад"
+            : language === "pl"
+            ? "Wróć"
+            : "Back"
+        }
+      </button>
+    `;
+
+    document
+      .getElementById("backFromModerationButton")
+      .addEventListener("click", () => {
+        showNextUnansweredQuestion();
+      });
+
+    return;
+  }
+
+  card.innerHTML = `
+    <div class="category">FLAGGED</div>
+
+    <h2 style="text-align:center;">
+      ${
+        language === "ru"
+          ? "Модерация"
+          : language === "pl"
+          ? "Moderacja"
+          : "Moderation"
+      }
+    </h2>
+
+    <p style="opacity:0.75; text-align:center;">
+      ${
+        language === "ru"
+          ? `Новых заявок: ${submissions.length}`
+          : language === "pl"
+          ? `Nowych zgłoszeń: ${submissions.length}`
+          : `Pending submissions: ${submissions.length}`
+      }
+    </p>
+
+    <div id="moderationList"></div>
+
+    <button
+      id="backFromModerationButton"
+      type="button"
+      style="
+        width:100%;
+        margin-top:16px;
+        padding:14px;
+        border:none;
+        border-radius:10px;
+        cursor:pointer;
+      "
+    >
+      ${
+        language === "ru"
+          ? "Назад"
+          : language === "pl"
+          ? "Wróć"
+          : "Back"
+      }
+    </button>
+  `;
+
+  const list = document.getElementById("moderationList");
+
+  list.innerHTML = submissions
+    .map(
+      submission => `
+        <button
+          type="button"
+          class="moderation-submission"
+          data-submission-id="${submission.id}"
+          style="
+            width:100%;
+            margin-top:10px;
+            padding:14px;
+            border:1px solid rgba(255,255,255,0.12);
+            border-radius:12px;
+            background:transparent;
+            color:inherit;
+            text-align:left;
+            cursor:pointer;
+          "
+        >
+          <strong>
+            #${submission.id}
+          </strong>
+
+          <div style="margin-top:7px;">
+            ${
+              submission.text_ru ||
+              submission.text_en ||
+              submission.text_pl ||
+              ""
+            }
+          </div>
+
+          <div style="margin-top:8px; opacity:0.7;">
+            ${submission.type}
+            ${
+              submission.category
+                ? ` · ${submission.category.icon || ""} ${
+                    submission.category[`name_${language}`] ||
+                    submission.category.name_ru ||
+                    ""
+                  }`
+                : ""
+            }
+          </div>
+        </button>
+      `
+    )
+    .join("");
+
+  document
+    .getElementById("backFromModerationButton")
+    .addEventListener("click", () => {
+      showNextUnansweredQuestion();
+    });
+
+  document
+    .getElementById("moderationList")
+    .addEventListener("click", event => {
+      const button = event.target.closest(".moderation-submission");
+
+      if (!button) return;
+
+      const submissionId = Number(button.dataset.submissionId);
+      const submission = submissions.find(item => item.id === submissionId);
+
+      if (!submission) return;
+
+      showModerationSubmission(submission);
+    });
+}
+
+function showModerationSubmission(submission) {
+  const options = Array.isArray(submission.options)
+    ? submission.options
+    : [];
+
+  card.innerHTML = `
+    <div class="category">FLAGGED</div>
+
+    <h2 style="text-align:center;">
+      ${
+        language === "ru"
+          ? "Проверка заявки"
+          : language === "pl"
+          ? "Sprawdzanie zgłoszenia"
+          : "Review submission"
+      }
+    </h2>
+
+    <p style="opacity:0.65;">
+      #${submission.id} · ${submission.type}
+    </p>
+
+    <div
+      style="
+        margin-top:16px;
+        padding:16px;
+        border:1px solid rgba(255,255,255,0.12);
+        border-radius:12px;
+      "
+    >
+      <p style="font-size:20px; line-height:1.45; margin:0;">
+        ${
+          submission.text_ru ||
+          submission.text_en ||
+          submission.text_pl ||
+          ""
+        }
+      </p>
+    </div>
+
+    <p style="margin-top:16px;">
+      <strong>
+        ${
+          language === "ru"
+            ? "Категория:"
+            : language === "pl"
+            ? "Kategoria:"
+            : "Category:"
+        }
+      </strong>
+      ${
+        submission.category
+          ? `${submission.category.icon || ""} ${
+              submission.category[`name_${language}`] ||
+              submission.category.name_ru ||
+              ""
+            }`
+          : "—"
+      }
+    </p>
+
+    ${
+      options.length > 0
+        ? `
+          <p style="margin-top:16px;">
+            <strong>
+              ${
+                language === "ru"
+                  ? "Варианты ответа:"
+                  : language === "pl"
+                  ? "Opcje odpowiedzi:"
+                  : "Answer options:"
+              }
+            </strong>
+          </p>
+
+          <div>
+            ${options
+              .map(
+                option => `
+                  <div
+                    style="
+                      margin-top:8px;
+                      padding:10px 12px;
+                      border:1px solid rgba(255,255,255,0.1);
+                      border-radius:10px;
+                    "
+                  >
+                    ${option.position}. ${
+                      option[`text_${language}`] ||
+                      option.text_ru ||
+                      option.text_en ||
+                      ""
+                    }
+                  </div>
+                `
+              )
+              .join("")}
+          </div>
+        `
+        : ""
+    }
+
+    ${
+      submission.has_personal_experience
+        ? `
+          <p style="margin-top:16px;">
+            ${
+              language === "ru"
+                ? "✓ Может содержать личный опыт"
+                : language === "pl"
+                ? "✓ Może zawierać osobiste doświadczenie"
+                : "✓ May contain personal experience"
+            }
+          </p>
+        `
+        : ""
+    }
+
+    <textarea
+      id="moderatorNote"
+      rows="4"
+      placeholder="${
+        language === "ru"
+          ? "Комментарий модератора..."
+          : language === "pl"
+          ? "Komentarz moderatora..."
+          : "Moderator note..."
+      }"
+      style="
+        width:100%;
+        box-sizing:border-box;
+        margin-top:16px;
+        padding:12px;
+        border-radius:10px;
+        resize:vertical;
+      "
+    ></textarea>
+
+    <button
+      id="approveSubmissionButton"
+      type="button"
+      style="
+        width:100%;
+        margin-top:14px;
+        padding:14px;
+        border:none;
+        border-radius:10px;
+        cursor:pointer;
+        font-weight:600;
+      "
+    >
+      ${
+        language === "ru"
+          ? "Одобрить"
+          : language === "pl"
+          ? "Zatwierdź"
+          : "Approve"
+      }
+    </button>
+
+    <button
+      id="rejectSubmissionButton"
+      type="button"
+      style="
+        width:100%;
+        margin-top:8px;
+        padding:14px;
+        border:1px solid #444;
+        border-radius:10px;
+        background:transparent;
+        color:inherit;
+        cursor:pointer;
+      "
+    >
+      ${
+        language === "ru"
+          ? "Отклонить"
+          : language === "pl"
+          ? "Odrzuć"
+          : "Reject"
+      }
+    </button>
+
+    <button
+      id="backToModerationListButton"
+      type="button"
+      style="
+        width:100%;
+        margin-top:8px;
+        padding:12px;
+        border:none;
+        border-radius:10px;
+        cursor:pointer;
+      "
+    >
+      ${
+        language === "ru"
+          ? "Назад к списку"
+          : language === "pl"
+          ? "Wróć do listy"
+          : "Back to list"
+      }
+    </button>
+  `;
+
+  document
+    .getElementById("approveSubmissionButton")
+    .addEventListener("click", () => {
+      moderateSubmissionDecision(submission.id, "APPROVED");
+    });
+
+  document
+    .getElementById("rejectSubmissionButton")
+    .addEventListener("click", () => {
+      moderateSubmissionDecision(submission.id, "REJECTED");
+    });
+
+  document
+    .getElementById("backToModerationListButton")
+    .addEventListener("click", () => {
+      showModerationPanel();
+    });
+}
+
+async function moderateSubmissionDecision(submissionId, decision) {
+  const note =
+    document.getElementById("moderatorNote")?.value.trim() || null;
+
+  const { data, error } = await supabaseClient.rpc(
+    "moderate_question_submission",
+    {
+      p_submission_id: submissionId,
+      p_decision: decision,
+      p_moderator_note: note
+    }
+  );
+
+  if (error) {
+    console.error("Ошибка модерации:", error);
+
+    alert(
+      language === "ru"
+        ? error.message || "Не удалось обработать заявку."
+        : language === "pl"
+        ? "Nie udało się przetworzyć zgłoszenia."
+        : "Could not process the submission."
+    );
+    return;
+  }
+
+  console.log("Flagged: решение модератора", {
+    submissionId,
+    decision,
+    result: data
+  });
+
+  alert(
+    decision === "APPROVED"
+      ? language === "ru"
+        ? "Заявка одобрена."
+        : language === "pl"
+        ? "Zgłoszenie zatwierdzone."
+        : "Submission approved."
+      : language === "ru"
+      ? "Заявка отклонена."
+      : language === "pl"
+      ? "Zgłoszenie odrzucone."
+      : "Submission rejected."
+  );
+
+  showModerationPanel();
+}
+
 function addShareButton() {
     const playButton = document.getElementById("playButton");
     if (!playButton || document.getElementById("shareButton")) return;

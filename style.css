@@ -207,3 +207,40 @@ h1 {
         padding: 16px;
     }
 }
+
+/* User actions */
+#createQuestionButton,
+#authButton {
+  display: block;
+  width: min(320px, 90%);
+  margin: 10px auto 0;
+  padding: 13px 20px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+#createQuestionButton {
+  background: #f4f4f7;
+  color: #111;
+  border: 1px solid #f4f4f7;
+}
+
+#authButton {
+  background: transparent;
+  color: #f4f4f7;
+  border: 1px solid #444;
+}
+
+#createQuestionButton:hover,
+#authButton:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+#createQuestionButton:active,
+#authButton:active {
+  transform: translateY(0);
+}
