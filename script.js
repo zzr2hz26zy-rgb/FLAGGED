@@ -323,6 +323,8 @@ function showStartScreen() {
 }
 
 
+let lastSavedSubmissionId = null;
+
 async function showQuestionComposer() {
 
   if (!flaggedCategories.length) {
@@ -645,6 +647,29 @@ async function showQuestionComposer() {
       </button>
 
       <button
+        id="submitQuestionButton"
+        type="button"
+        disabled
+        style="
+          width:100%;
+          margin-top:8px;
+          padding:14px;
+          border:none;
+          border-radius:10px;
+          cursor:not-allowed;
+          opacity:0.5;
+        "
+      >
+        ${
+          language === "ru"
+            ? "Отправить на модерацию"
+            : language === "pl"
+            ? "Wyślij do moderacji"
+            : "Submit for moderation"
+        }
+      </button>
+
+      <button
         id="backToGameButton"
         type="button"
         style="
@@ -702,6 +727,44 @@ async function showQuestionComposer() {
     document
       .getElementById("backToGameButton")
       .addEventListener("click", () => {
+        showNextUnansweredQuestion();
+      });
+
+    document
+      .getElementById("submitQuestionButton")
+      .addEventListener("click", async () => {
+        if (!lastSavedSubmissionId) return;
+
+        const { error } = await supabaseClient.rpc(
+          "submit_question_submission",
+          {
+            p_submission_id: lastSavedSubmissionId
+          }
+        );
+
+        if (error) {
+          console.error("Ошибка отправки на модерацию:", error);
+
+          alert(
+            language === "ru"
+              ? "Не удалось отправить вопрос на модерацию."
+              : language === "pl"
+              ? "Nie udało się wysłać pytania do moderacji."
+              : "The question could not be submitted for moderation."
+          );
+
+          return;
+        }
+
+        alert(
+          language === "ru"
+            ? "Вопрос отправлен на модерацию."
+            : language === "pl"
+            ? "Pytanie zostało wysłane do moderacji."
+            : "The question has been submitted for moderation."
+        );
+
+        lastSavedSubmissionId = null;
         showNextUnansweredQuestion();
       });
 
@@ -771,6 +834,7 @@ async function showQuestionComposer() {
 
         const submissionPayload = {
           created_by: user.id,
+          original_language: language,
           text_ru: language === "ru" ? text : null,
           text_en: language === "en" ? text : null,
           text_pl: language === "pl" ? text : null,
@@ -874,6 +938,18 @@ async function showQuestionComposer() {
             );
             return;
           }
+        }
+
+        lastSavedSubmissionId = submission.id;
+
+        const submitQuestionButton = document.getElementById(
+          "submitQuestionButton"
+        );
+
+        if (submitQuestionButton) {
+          submitQuestionButton.disabled = false;
+          submitQuestionButton.style.opacity = "1";
+          submitQuestionButton.style.cursor = "pointer";
         }
 
         console.log("Flagged: черновик сохранён", {
@@ -1362,52 +1438,114 @@ async function showModerationPanel() {
   const list = document.getElementById("moderationList");
 
   list.innerHTML = submissions
-    .map(
-      submission => `
+    .map(submission => {
+      const text =
+        submission.text_ru ||
+        submission.text_en ||
+        submission.text_pl ||
+        "";
+
+      const categoryName = submission.category
+        ? submission.category[`name_${language}`] ||
+          submission.category.name_ru ||
+          submission.category.name_en ||
+          ""
+        : "";
+
+      const createdAt = submission.created_at
+        ? new Date(submission.created_at).toLocaleString(
+            language === "ru"
+              ? "ru-RU"
+              : language === "pl"
+              ? "pl-PL"
+              : "en-GB",
+            {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit"
+            }
+          )
+        : "";
+
+      const statusLabel =
+        language === "ru"
+          ? "На проверке"
+          : language === "pl"
+          ? "Do sprawdzenia"
+          : "Pending review";
+
+      const typeLabel =
+        submission.type === "SITUATION"
+          ? language === "ru"
+            ? "Ситуация"
+            : language === "pl"
+            ? "Sytuacja"
+            : "Situation"
+          : submission.type === "POLL"
+          ? language === "ru"
+            ? "Опрос"
+            : language === "pl"
+            ? "Ankieta"
+            : "Poll"
+          : language === "ru"
+          ? "Вопрос"
+          : language === "pl"
+          ? "Pytanie"
+          : "Question";
+
+      const openLabel =
+        language === "ru"
+          ? "Открыть заявку →"
+          : language === "pl"
+          ? "Otwórz zgłoszenie →"
+          : "Open submission →";
+
+      return `
         <button
           type="button"
           class="moderation-submission"
           data-submission-id="${submission.id}"
-          style="
-            width:100%;
-            margin-top:10px;
-            padding:14px;
-            border:1px solid rgba(255,255,255,0.12);
-            border-radius:12px;
-            background:transparent;
-            color:inherit;
-            text-align:left;
-            cursor:pointer;
-          "
         >
-          <strong>
-            #${submission.id}
-          </strong>
+          <strong>#${submission.id}</strong>
 
-          <div style="margin-top:7px;">
+          <div class="moderation-meta">
+            <span class="moderation-badge">
+              ${statusLabel}
+            </span>
+
+            <span class="moderation-badge">
+              ${typeLabel}
+            </span>
+
             ${
-              submission.text_ru ||
-              submission.text_en ||
-              submission.text_pl ||
-              ""
+              categoryName
+                ? `
+                  <span class="moderation-badge">
+                    ${submission.category.icon || ""} ${categoryName}
+                  </span>
+                `
+                : ""
             }
-          </div>
 
-          <div style="margin-top:8px; opacity:0.7;">
-            ${submission.type}
             ${
-              submission.category
-                ? ` · ${submission.category.icon || ""} ${
-                    submission.category[`name_${language}`] ||
-                    submission.category.name_ru ||
-                    ""
-                  }`
+              createdAt
+                ? `<span class="moderation-badge">${createdAt}</span>`
                 : ""
             }
           </div>
+
+          <div class="moderation-preview">
+            ${text}
+          </div>
+
+          <div class="moderation-action">
+            ${openLabel}
+          </div>
         </button>
-      `
-    )
+      `;
+    })
     .join("");
 
   document
