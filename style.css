@@ -343,3 +343,36 @@ h1 {
   color: #f4f4f7 !important;
   border: 1px solid #444 !important;
 }
+
+/* Poll / Situation answer options */
+.buttons .poll-option {
+    background: #242428;
+    color: #f4f4f7;
+    border: 1px solid #45454d;
+    text-align: left;
+    box-sizing: border-box;
+}
+
+.buttons .poll-option:hover {
+    background: #2d2d33;
+    border-color: #666670;
+}
+
+.buttons .poll-option:focus-visible {
+    outline: 2px solid #f4f4f7;
+    outline-offset: 2px;
+}
+
+/* Force readable poll/situation options */
+.buttons button.poll-option {
+    background: #242428 !important;
+    background-color: #242428 !important;
+    color: #f4f4f7 !important;
+    border: 1px solid #45454d !important;
+}
+
+.buttons button.poll-option:hover {
+    background: #2d2d33 !important;
+    background-color: #2d2d33 !important;
+    color: #ffffff !important;
+}

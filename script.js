@@ -603,7 +603,6 @@ async function showQuestionComposer() {
           resize:vertical;
         "
       ></textarea>
-
       <select
         id="userQuestionType"
         style="
@@ -1512,7 +1511,15 @@ async function showModerationPanel() {
 
           <div class="moderation-meta">
             <span class="moderation-badge">
-              ${statusLabel}
+              ${
+                submission.moderation_status === "PENDING"
+                  ? language === "ru"
+                    ? "На проверке"
+                    : language === "pl"
+                    ? "Do sprawdzenia"
+                    : "Pending review"
+                  : submission.moderation_status || "—"
+              }
             </span>
 
             <span class="moderation-badge">
@@ -1523,17 +1530,32 @@ async function showModerationPanel() {
               categoryName
                 ? `
                   <span class="moderation-badge">
-                    ${submission.category.icon || ""} ${categoryName}
+                    ${submission.category?.icon || ""} ${categoryName}
                   </span>
                 `
                 : ""
             }
 
-            ${
-              createdAt
-                ? `<span class="moderation-badge">${createdAt}</span>`
-                : ""
-            }
+            <span class="moderation-badge">
+              ${
+                submission.created_at
+                  ? new Date(submission.created_at).toLocaleString(
+                      language === "ru"
+                        ? "ru-RU"
+                        : language === "pl"
+                        ? "pl-PL"
+                        : "en-GB",
+                      {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      }
+                    )
+                  : "—"
+              }
+            </span>
           </div>
 
           <div class="moderation-preview">
@@ -1983,13 +2005,18 @@ function showSituation() {
     <div class="progress-fill"
          style="width: ${((currentIndex + 1) / situations.length) * 100}%;">
     </div>
-</div>    `;
+</div>
+
+<div id="commentsSection" class="comments-section"></div>
+    `;
 
     const buttons = card.querySelectorAll(".buttons button");
 
     buttons.forEach(button => {
         button.addEventListener("click", () => handleAnswer(button));
     });
+
+    renderComments(situation.id);
 }
 
 
@@ -2234,7 +2261,7 @@ async function handleAnswer(button) {
         const { data: votes, error: votesError } =
             await supabaseClient
                 .from("votes")
-                .select("option_id")
+                .select("option_id, has_personal_experience")
                 .eq("question_id", questionId);
 
         if (votesError) {
@@ -2258,6 +2285,22 @@ async function handleAnswer(button) {
         });
 
         const totalVotes = votes.length;
+
+        const experienceVotes = votes.filter(
+            vote => vote.has_personal_experience === true
+        ).length;
+
+        const opinionVotes = votes.filter(
+            vote => vote.has_personal_experience === false
+        ).length;
+
+        const experiencePercentage = totalVotes
+            ? Math.round((experienceVotes / totalVotes) * 100)
+            : 0;
+
+        const opinionPercentage = totalVotes
+            ? Math.round((opinionVotes / totalVotes) * 100)
+            : 0;
 
         // -------------------------------------------------
         // Универсальные результаты для POLL и SITUATION.
@@ -2299,6 +2342,118 @@ async function handleAnswer(button) {
                 })
                 .join("")}
           </div>
+
+          ${
+            situation.type === "SITUATION" &&
+            situation.hasPersonalExperience &&
+            totalVotes > 0
+              ? `
+                <div
+                  style="
+                    margin-top:24px;
+                    padding-top:18px;
+                    border-top:1px solid rgba(255,255,255,0.12);
+                  "
+                >
+                  <div
+                    style="
+                      font-weight:bold;
+                      margin-bottom:12px;
+                    "
+                  >
+                    ${
+                      language === "ru"
+                        ? "Личный опыт и мнение"
+                        : language === "pl"
+                        ? "Osobiste doświadczenie i opinia"
+                        : "Personal experience and opinion"
+                    }
+                  </div>
+
+                  <div
+                    style="
+                      display:flex;
+                      justify-content:space-between;
+                      gap:12px;
+                      margin-bottom:8px;
+                    "
+                  >
+                    <span>
+                      ${
+                        language === "ru"
+                          ? "Личный опыт"
+                          : language === "pl"
+                          ? "Osobiste doświadczenie"
+                          : "Personal experience"
+                      }
+                    </span>
+
+                    <strong>${experiencePercentage}%</strong>
+                  </div>
+
+                  <div
+                    style="
+                      width:100%;
+                      height:8px;
+                      background:rgba(255,255,255,0.12);
+                      border-radius:5px;
+                      overflow:hidden;
+                      margin-bottom:14px;
+                    "
+                  >
+                    <div
+                      style="
+                        width:${experiencePercentage}%;
+                        height:100%;
+                        background:#ffffff;
+                        border-radius:5px;
+                      "
+                    ></div>
+                  </div>
+
+                  <div
+                    style="
+                      display:flex;
+                      justify-content:space-between;
+                      gap:12px;
+                      margin-bottom:8px;
+                    "
+                  >
+                    <span>
+                      ${
+                        language === "ru"
+                          ? "Мнение"
+                          : language === "pl"
+                          ? "Opinia"
+                          : "Opinion"
+                      }
+                    </span>
+
+                    <strong>${opinionPercentage}%</strong>
+                  </div>
+
+                  <div
+                    style="
+                      width:100%;
+                      height:8px;
+                      background:rgba(255,255,255,0.12);
+                      border-radius:5px;
+                      overflow:hidden;
+                    "
+                  >
+                    <div
+                      style="
+                        width:${opinionPercentage}%;
+                        height:100%;
+                        background:#ffffff;
+                        border-radius:5px;
+                      "
+                    ></div>
+                  </div>
+                </div>
+              `
+              : ""
+          }
 
           <button class="next-button" style="margin-top:20px;">
             ${
@@ -2443,3 +2598,423 @@ updateHeader();
 showStartScreen();
 addShareButton();
 
+
+async function loadComments(questionId) {
+    const { data, error } = await supabaseClient
+        .from("comments")
+        .select("id, question_id, parent_comment_id, created_by, body, original_language, created_at")
+        .eq("question_id", questionId)
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: true });
+
+    if (error) {
+        console.error("Flagged: ошибка загрузки комментариев:", error);
+        return [];
+    }
+
+    return data || [];
+}
+
+async function renderComments(questionId) {
+    const section = document.getElementById("commentsSection");
+
+    if (!section) return;
+
+    section.innerHTML = `
+        <div style="margin-top:28px;">
+            <h3 style="margin-bottom:14px;">
+                ${
+                    language === "ru"
+                        ? "Комментарии"
+                        : language === "pl"
+                        ? "Komentarze"
+                        : "Comments"
+                }
+            </h3>
+
+            <textarea
+                id="newCommentText"
+                placeholder="${
+                    language === "ru"
+                        ? "Напишите свой комментарий..."
+                        : language === "pl"
+                        ? "Napisz komentarz..."
+                        : "Write a comment..."
+                }"
+                style="
+                    width:100%;
+                    min-height:90px;
+                    padding:12px;
+                    border-radius:10px;
+                    border:1px solid #444;
+                    background:#18181b;
+                    color:#f4f4f7;
+                    resize:vertical;
+                    box-sizing:border-box;
+                "
+            ></textarea>
+
+            <button
+                id="addCommentButton"
+                type="button"
+                style="
+                    width:100%;
+                    margin-top:10px;
+                    padding:12px;
+                    border:none;
+                    border-radius:10px;
+                    background:#f4f4f7;
+                    color:#111;
+                    cursor:pointer;
+                    font-weight:600;
+                "
+            >
+                ${
+                    language === "ru"
+                        ? "Добавить комментарий"
+                        : language === "pl"
+                        ? "Dodaj komentarz"
+                        : "Add comment"
+                }
+            </button>
+
+            <div id="commentsList" style="margin-top:18px;">
+                ${
+                    language === "ru"
+                        ? "Загрузка комментариев..."
+                        : language === "pl"
+                        ? "Ładowanie komentarzy..."
+                        : "Loading comments..."
+                }
+            </div>
+        </div>
+    `;
+
+    const comments = await loadComments(questionId);
+
+    const list = document.getElementById("commentsList");
+
+    if (!list) return;
+
+    if (comments.length === 0) {
+        list.innerHTML = `
+            <div style="opacity:0.6;">
+                ${
+                    language === "ru"
+                        ? "Пока нет комментариев."
+                        : language === "pl"
+                        ? "Brak komentarzy."
+                        : "No comments yet."
+                }
+            </div>
+        `;
+    } else {
+        list.innerHTML = comments
+            .map(
+                comment => `
+                    <div
+                        class="comment-card"
+                        data-comment-id="${comment.id}"
+                        style="
+                            margin-top:12px;
+                            padding:14px;
+                            border:1px solid #333;
+                            border-radius:12px;
+                            background:#18181b;
+                        "
+                    >
+                        <div
+                            data-comment-text
+                            style="
+                                font-size:14px;
+                                line-height:1.5;
+                            "
+                        >
+                            ${comment.body}
+                        </div>
+
+                        <div
+                            style="
+                                display:flex;
+                                align-items:center;
+                                gap:12px;
+                                margin-top:10px;
+                            "
+                        >
+                            <div
+                                style="
+                                    font-size:12px;
+                                    opacity:0.55;
+                                "
+                            >
+                                ${new Date(comment.created_at).toLocaleString(
+                                    language === "ru"
+                                        ? "ru-RU"
+                                        : language === "pl"
+                                        ? "pl-PL"
+                                        : "en-GB"
+                                )}
+                            </div>
+
+                            <button
+                                type="button"
+                                class="translate-comment-button"
+                                data-comment-id="${comment.id}"
+                                style="
+                                    margin-left:auto;
+                                    padding:6px 10px;
+                                    border:1px solid #444;
+                                    border-radius:8px;
+                                    background:transparent;
+                                    color:#f4f4f7;
+                                    cursor:pointer;
+                                    font-size:12px;
+                                "
+                            >
+                                ${
+                                    language === "ru"
+                                        ? "Перевести"
+                                        : language === "pl"
+                                        ? "Przetłumacz"
+                                        : "Translate"
+                                }
+                            </button>
+                        </div>
+                    </div>
+                `
+            )
+            .join("");
+    }
+
+    document
+        .getElementById("addCommentButton")
+        ?.addEventListener("click", () => {
+            addComment(questionId);
+        });
+
+    document
+        .getElementById("commentsList")
+        ?.addEventListener("click", event => {
+            const button = event.target.closest(
+                ".translate-comment-button"
+            );
+
+            if (!button) return;
+
+            const commentId = Number(
+                button.dataset.commentId
+            );
+
+            const comment = comments.find(
+                item => Number(item.id) === commentId
+            );
+
+            if (!comment) return;
+
+            translateComment(comment, button);
+        });
+}
+
+async function addComment(questionId) {
+    const textarea = document.getElementById("newCommentText");
+
+    if (!textarea) return;
+
+    const body = textarea.value.trim();
+
+    if (!body) {
+        alert(
+            language === "ru"
+                ? "Напиши комментарий."
+                : language === "pl"
+                ? "Napisz komentarz."
+                : "Write a comment."
+        );
+        return;
+    }
+
+    const {
+        data: { user },
+        error: userError
+    } = await supabaseClient.auth.getUser();
+
+    if (userError || !user) {
+        alert(
+            language === "ru"
+                ? "Чтобы написать комментарий, нужно войти в аккаунт."
+                : language === "pl"
+                ? "Aby dodać komentarz, musisz się zalogować."
+                : "You need to sign in to add a comment."
+        );
+        return;
+    }
+
+    const detectedLanguage = (await detectCommentLanguage(body)) || language;
+
+    const { error } = await supabaseClient
+        .from("comments")
+        .insert({
+            question_id: questionId,
+            created_by: user.id,
+            body,
+            original_language: detectedLanguage
+        });
+
+    if (error) {
+        console.error("Flagged: ошибка добавления комментария:", error);
+
+        alert(
+            language === "ru"
+                ? "Не удалось добавить комментарий."
+                : language === "pl"
+                ? "Nie udało się dodać komentarza."
+                : "The comment could not be added."
+        );
+
+        return;
+    }
+
+    textarea.value = "";
+
+    await renderComments(questionId);
+}
+
+async function translateComment(comment, button) {
+    if (!comment?.body) return;
+
+    const targetLanguage = language;
+    const sourceLanguage = comment.original_language || "en";
+
+    if (sourceLanguage === targetLanguage) {
+        alert(
+            language === "ru"
+                ? "Комментарий уже написан на вашем языке."
+                : language === "pl"
+                ? "Komentarz jest już napisany w Twoim języku."
+                : "The comment is already in your language."
+        );
+        return;
+    }
+
+    const card = button.closest(".comment-card");
+
+    if (!card) return;
+
+    const textElement = card.querySelector(
+        "[data-comment-text]"
+    );
+
+    if (!textElement) return;
+
+    // Если перевод уже показан — возвращаем оригинал.
+    if (button.dataset.translated === "true") {
+        textElement.textContent = comment.body;
+
+        button.dataset.translated = "false";
+
+        button.textContent =
+            language === "ru"
+                ? "Перевести"
+                : language === "pl"
+                ? "Przetłumacz"
+                : "Translate";
+
+        return;
+    }
+
+    const originalLabel = button.textContent;
+
+    button.disabled = true;
+
+    button.textContent =
+        language === "ru"
+            ? "Перевод..."
+            : language === "pl"
+            ? "Tłumaczenie..."
+            : "Translating...";
+
+    try {
+        const { data, error } =
+            await supabaseClient.functions.invoke(
+                "translate-question",
+                {
+                    body: {
+                        text: comment.body,
+                        source_language: sourceLanguage,
+                        target_language: targetLanguage
+                    }
+                }
+            );
+
+        if (error) throw error;
+
+        if (!data?.translated_text) {
+            throw new Error("Translation was not returned");
+        }
+
+        textElement.textContent =
+            data.translated_text;
+
+        button.dataset.translated = "true";
+
+        button.textContent =
+            language === "ru"
+                ? "Показать оригинал"
+                : language === "pl"
+                ? "Pokaż oryginał"
+                : "Show original";
+
+    } catch (error) {
+        console.error(
+            "Flagged: ошибка перевода комментария:",
+            error
+        );
+
+        button.textContent = originalLabel;
+
+        alert(
+            language === "ru"
+                ? "Не удалось перевести комментарий."
+                : language === "pl"
+                ? "Nie udało się przetłumaczyć komentarza."
+                : "Could not translate the comment."
+        );
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function detectCommentLanguage(text) {
+    const normalizedText = String(text || "").trim();
+
+    if (normalizedText.length < 15) {
+        return null;
+    }
+
+    try {
+        const { franc } = await import("https://esm.sh/franc-min@6.2.0");
+
+        const detected = franc(normalizedText);
+
+        const languageMap = {
+            rus: "ru",
+            pol: "pl",
+            ukr: "uk",
+            eng: "en",
+            cmn: "zh-CN",
+            deu: "de",
+            spa: "es",
+            fra: "fr",
+            ita: "it"
+        };
+
+        return languageMap[detected] || null;
+    } catch (error) {
+        console.error(
+            "Flagged: ошибка определения языка комментария:",
+            error
+        );
+
+        return null;
+    }
+}
