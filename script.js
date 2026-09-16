@@ -16,6 +16,7 @@ const translations = {
         majority: "🔥 You're with the majority!",
         minority: "👀 You're in the minority!",
         language: "Language",
+        askQuestion: "ASK A QUESTION",
         relationships: "RELATIONSHIPS",
         friendship: "FRIENDSHIP",
         social: "SOCIAL MEDIA",
@@ -46,6 +47,7 @@ const translations = {
         majority: "🔥 Ты заодно с большинством!",
         minority: "👀 Ты в меньшинстве!",
         language: "Язык",
+        askQuestion: "ЗАДАТЬ ВОПРОС",
         relationships: "ОТНОШЕНИЯ",
         friendship: "ДРУЖБА",
         social: "СОЦИАЛЬНЫЕ СЕТИ",
@@ -76,6 +78,7 @@ const translations = {
         majority: "🔥 Jesteś po stronie większości!",
         minority: "👀 Jesteś w mniejszości!",
         language: "Język",
+        askQuestion: "ZADAJ PYTANIE",
         relationships: "RELACJE",
         friendship: "PRZYJAŹŃ",
         social: "MEDIA SPOŁECZNOŚCIOWE",
@@ -212,12 +215,27 @@ function createLanguageSelector() {
     app.prepend(selector);
 
     selector.querySelectorAll("button").forEach(button => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", async () => {
             language = button.dataset.lang;
             localStorage.setItem("flaggedLanguage", language);
 
+            createLanguageSelector();
             updateHeader();
-            showSituation();
+            await updateAuthButtons();
+
+            if (document.getElementById("authEmail")) {
+                const authMode = document.getElementById("authPasswordConfirm")
+                    ? "signup"
+                    : "signin";
+
+                await showAuthComposer(authMode);
+            } else if (gameStarted && situations.length > 0) {
+                showSituation();
+            } else {
+                showStartScreen();
+            }
+
+            createLanguageSelector();
         });
     });
 }
@@ -228,8 +246,12 @@ function updateHeader() {
     const title = document.querySelector("h1");
     const subtitle = document.querySelector(".subtitle");
     const hint = document.querySelector(".hint");
+    const createQuestionButton = document.getElementById("createQuestionButton");
 
     if (title) title.textContent = t().title;
+    if (createQuestionButton) {
+        createQuestionButton.textContent = t().askQuestion;
+    }
     if (subtitle) subtitle.textContent = t().subtitle;
 
     if (hint) {
@@ -978,6 +1000,228 @@ document
   ?.addEventListener("click", showQuestionComposer);
 
 
+
+async function showProfileSetup() {
+    card.innerHTML = `
+        <div class="category">FLAGGED</div>
+
+        <h2 style="text-align:center;">
+            ${
+                language === "ru"
+                    ? "Настрой профиль"
+                    : language === "pl"
+                    ? "Ustaw swój profil"
+                    : "Set up your profile"
+            }
+        </h2>
+
+        <p style="
+            color:#999;
+            line-height:1.5;
+            text-align:center;
+            margin:12px 0 20px;
+        ">
+            ${
+                language === "ru"
+                    ? "Как вас показывать другим пользователям?"
+                    : language === "pl"
+                    ? "Jak chcesz być wyświetlany innym użytkownikom?"
+                    : "How should other users see you?"
+            }
+        </p>
+
+        <input
+            id="profileDisplayName"
+            type="text"
+            maxlength="40"
+            autocomplete="nickname"
+            placeholder="${
+                language === "ru"
+                    ? "Имя или псевдоним"
+                    : language === "pl"
+                    ? "Imię lub pseudonim"
+                    : "Name or nickname"
+            }"
+            style="
+                width:100%;
+                box-sizing:border-box;
+                padding:14px;
+                border-radius:10px;
+                border:1px solid #444;
+                background:#18181b;
+                color:#f4f4f7;
+                font-size:15px;
+            "
+        >
+
+        <button
+            id="saveProfileButton"
+            type="button"
+            style="
+                width:100%;
+                margin-top:14px;
+                padding:14px;
+                border:none;
+                border-radius:10px;
+                background:white;
+                color:black;
+                cursor:pointer;
+                font-weight:600;
+            "
+        >
+            ${
+                language === "ru"
+                    ? "Сохранить"
+                    : language === "pl"
+                    ? "Zapisz"
+                    : "Save"
+            }
+        </button>
+    `;
+
+    document
+        .getElementById("saveProfileButton")
+        ?.addEventListener("click", async () => {
+            const input = document.getElementById("profileDisplayName");
+            const displayName = input?.value.trim();
+
+            if (!displayName) {
+                alert(
+                    language === "ru"
+                        ? "Введите имя или псевдоним."
+                        : language === "pl"
+                        ? "Wpisz imię lub pseudonim."
+                        : "Enter a name or nickname."
+                );
+                return;
+            }
+
+            const {
+                data: { user },
+                error: userError
+            } = await supabaseClient.auth.getUser();
+
+            if (userError || !user) {
+                alert(
+                    language === "ru"
+                        ? "Не удалось определить пользователя."
+                        : language === "pl"
+                        ? "Nie udało się ustalić użytkownika."
+                        : "Could not identify the user."
+                );
+                return;
+            }
+
+            const button = document.getElementById("saveProfileButton");
+
+            if (button) {
+                button.disabled = true;
+                button.textContent =
+                    language === "ru"
+                        ? "Сохраняем..."
+                        : language === "pl"
+                        ? "Zapisywanie..."
+                        : "Saving...";
+            }
+
+            const { error } = await supabaseClient
+                .from("profiles")
+                .update({
+                    username: displayName,
+                    display_name: displayName
+                })
+                .eq("id", user.id);
+
+            if (error) {
+                console.error(
+                    "Flagged: ошибка сохранения профиля:",
+                    error
+                );
+
+                if (button) {
+                    button.disabled = false;
+                    button.textContent =
+                        language === "ru"
+                            ? "Сохранить"
+                            : language === "pl"
+                            ? "Zapisz"
+                            : "Save";
+                }
+
+                alert(
+                    language === "ru"
+                        ? "Не удалось сохранить профиль."
+                        : language === "pl"
+                        ? "Nie udało się zapisać profilu."
+                        : "Could not save the profile."
+                );
+
+                return;
+            }
+
+            showNextUnansweredQuestion();
+        });
+}
+
+
+
+async function continueAfterAuth() {
+    const {
+        data: { user },
+        error: userError
+    } = await supabaseClient.auth.getUser();
+
+    if (userError || !user) {
+        console.error("Flagged: не удалось получить пользователя:", userError);
+        return;
+    }
+
+    // Обновляем кнопки сразу после успешной авторизации.
+    await updateAuthButtons();
+
+    const { data: profile, error: profileError } = await supabaseClient
+        .from("profiles")
+        .select("display_name, username")
+        .eq("id", user.id)
+        .maybeSingle();
+
+    if (profileError) {
+        console.error(
+            "Flagged: ошибка проверки профиля:",
+            profileError
+        );
+        return;
+    }
+
+    const displayName =
+        profile?.display_name?.trim() ||
+        profile?.username?.trim() ||
+        "";
+
+    if (!displayName) {
+        await showProfileSetup();
+        return;
+    }
+
+    // После входа заново загружаем актуальный список вопросов
+    // и актуальную историю ответов.
+    currentIndex = 0;
+
+    const questionsLoaded = await loadQuestionsFromSupabase();
+
+    if (!questionsLoaded) {
+        console.error(
+            "Flagged: не удалось загрузить вопросы после авторизации"
+        );
+        return;
+    }
+
+    await loadAnsweredQuestionIds();
+
+    showNextUnansweredQuestion();
+}
+
+
 async function showAuthComposer() {
   const renderAuth = (mode = "signin") => {
     const isSignUp = mode === "signup";
@@ -1237,7 +1481,7 @@ async function showAuthComposer() {
                 : "Account created. You are now signed in."
             );
 
-            showNextUnansweredQuestion();
+            await continueAfterAuth();
           }
         });
     } else {
@@ -1272,7 +1516,7 @@ async function showAuthComposer() {
               : "You are now signed in to Flagged."
           );
 
-          showNextUnansweredQuestion();
+          await continueAfterAuth();
         });
     }
   };
@@ -1281,9 +1525,69 @@ async function showAuthComposer() {
 }
 
 
+async function updateAuthButtons() {
+  const authButton = document.getElementById("authButton");
+  const logoutButton = document.getElementById("logoutButton");
+
+  if (!authButton || !logoutButton) return;
+
+  const {
+    data: { user }
+  } = await supabaseClient.auth.getUser();
+
+  if (user) {
+    authButton.style.display = "none";
+    logoutButton.style.display = "block";
+
+    logoutButton.textContent =
+      language === "ru"
+        ? "Выйти"
+        : language === "pl"
+        ? "Wyloguj"
+        : "Sign out";
+  } else {
+    authButton.style.display = "block";
+    logoutButton.style.display = "none";
+
+    authButton.textContent =
+      language === "ru"
+        ? "Войти"
+        : language === "pl"
+        ? "Zaloguj się"
+        : "Sign in";
+  }
+}
+
 document
   .getElementById("authButton")
   ?.addEventListener("click", showAuthComposer);
+
+document
+  .getElementById("logoutButton")
+  ?.addEventListener("click", async () => {
+    const { error } = await supabaseClient.auth.signOut();
+
+    if (error) {
+      console.error("Flagged: ошибка выхода:", error);
+
+      alert(
+        language === "ru"
+          ? "Не удалось выйти из аккаунта."
+          : language === "pl"
+          ? "Nie udało się wylogować."
+          : "Could not sign out."
+      );
+
+      return;
+    }
+
+    await updateAuthButtons();
+
+    currentIndex = 0;
+    gameStarted = false;
+
+    showStartScreen();
+  });
 
 document
   .getElementById("moderationButton")
@@ -2029,19 +2333,70 @@ let pendingPersonalExperience = null;
 let pendingAnswerSelection = null;
 
 async function loadAnsweredQuestionIds() {
-    const { data, error } = await supabaseClient
-        .from("votes")
-        .select("question_id")
-        .eq("browser_id", flaggedBrowserId);
+    const {
+        data: { user }
+    } = await supabaseClient.auth.getUser();
 
-    if (error) {
-        console.error("Flagged: ошибка загрузки отвеченных вопросов:", error);
-        answeredQuestionIds = new Set();
-        return;
+    let votes = [];
+
+    if (user) {
+        // Для авторизованного пользователя учитываем:
+        // 1. ответы этого аккаунта
+        // 2. старые ответы этого браузера
+        const { data: userVotes, error: userVotesError } = await supabaseClient
+            .from("votes")
+            .select("question_id")
+            .eq("user_id", user.id);
+
+        if (userVotesError) {
+            console.error(
+                "Flagged: ошибка загрузки ответов пользователя:",
+                userVotesError
+            );
+            answeredQuestionIds = new Set();
+            return;
+        }
+
+        const { data: browserVotes, error: browserVotesError } =
+            await supabaseClient
+                .from("votes")
+                .select("question_id")
+                .eq("browser_id", flaggedBrowserId);
+
+        if (browserVotesError) {
+            console.error(
+                "Flagged: ошибка загрузки ответов браузера:",
+                browserVotesError
+            );
+            answeredQuestionIds = new Set();
+            return;
+        }
+
+        votes = [
+            ...(userVotes || []),
+            ...(browserVotes || [])
+        ];
+    } else {
+        // Для гостя история остаётся привязанной к браузеру.
+        const { data, error } = await supabaseClient
+            .from("votes")
+            .select("question_id")
+            .eq("browser_id", flaggedBrowserId);
+
+        if (error) {
+            console.error(
+                "Flagged: ошибка загрузки отвеченных вопросов:",
+                error
+            );
+            answeredQuestionIds = new Set();
+            return;
+        }
+
+        votes = data || [];
     }
 
     answeredQuestionIds = new Set(
-        (data || []).map(vote => Number(vote.question_id))
+        votes.map(vote => Number(vote.question_id))
     );
 
     console.log(
@@ -2179,14 +2534,28 @@ async function handleAnswer(button) {
             : (pendingPersonalExperience ?? false);
 
     try {
-        // Защита от повторного голосования.
+        const {
+            data: { user }
+        } = await supabaseClient.auth.getUser();
+
+        // Для авторизованного пользователя защита идёт по user_id.
+        // Для гостя — по browser_id.
+        let existingVoteQuery = supabaseClient
+            .from("votes")
+            .select("id")
+            .eq("question_id", questionId);
+
+        if (user) {
+            existingVoteQuery = existingVoteQuery.eq("user_id", user.id);
+        } else {
+            existingVoteQuery = existingVoteQuery.eq(
+                "browser_id",
+                flaggedBrowserId
+            );
+        }
+
         const { data: existingVote, error: existingVoteError } =
-            await supabaseClient
-                .from("votes")
-                .select("id")
-                .eq("question_id", questionId)
-                .eq("browser_id", flaggedBrowserId)
-                .maybeSingle();
+            await existingVoteQuery.maybeSingle();
 
         if (existingVoteError) {
             console.error(
@@ -2197,14 +2566,20 @@ async function handleAnswer(button) {
         }
 
         if (!existingVote) {
+            const voteData = {
+                question_id: questionId,
+                option_id: optionId,
+                browser_id: flaggedBrowserId,
+                has_personal_experience: experienceValue
+            };
+
+            if (user) {
+                voteData.user_id = user.id;
+            }
+
             const { error: voteError } = await supabaseClient
                 .from("votes")
-                .insert({
-                    question_id: questionId,
-                    option_id: optionId,
-                    browser_id: flaggedBrowserId,
-                    has_personal_experience: experienceValue
-                });
+                .insert(voteData);
 
             if (voteError) {
                 if (voteError.code === "23505") {
@@ -2596,13 +2971,14 @@ async function restartGame() {
 createLanguageSelector();
 updateHeader();
 showStartScreen();
+updateAuthButtons();
 addShareButton();
 
 
 async function loadComments(questionId) {
     const { data, error } = await supabaseClient
         .from("comments")
-        .select("id, question_id, parent_comment_id, created_by, body, original_language, created_at")
+        .select("id, question_id, parent_comment_id, created_by, body, original_language, created_at, is_anonymous")
         .eq("question_id", questionId)
         .eq("is_deleted", false)
         .order("created_at", { ascending: true });
@@ -2612,7 +2988,48 @@ async function loadComments(questionId) {
         return [];
     }
 
-    return data || [];
+    const comments = data || [];
+
+    if (comments.length === 0) {
+        return [];
+    }
+
+    const userIds = [
+        ...new Set(
+            comments
+                .map(comment => comment.created_by)
+                .filter(Boolean)
+        )
+    ];
+
+    if (userIds.length === 0) {
+        return comments;
+    }
+
+    const { data: profiles, error: profilesError } = await supabaseClient
+        .from("profiles")
+        .select("id, username, display_name, avatar_url, is_anonymous")
+        .in("id", userIds);
+
+    if (profilesError) {
+        console.error(
+            "Flagged: ошибка загрузки профилей комментариев:",
+            profilesError
+        );
+        return comments;
+    }
+
+    const profilesMap = new Map(
+        (profiles || []).map(profile => [
+            String(profile.id),
+            profile
+        ])
+    );
+
+    return comments.map(comment => ({
+        ...comment,
+        profile: profilesMap.get(String(comment.created_by)) || null
+    }));
 }
 
 async function renderComments(questionId) {
@@ -2653,6 +3070,29 @@ async function renderComments(questionId) {
                     box-sizing:border-box;
                 "
             ></textarea>
+
+            <label
+                style="
+                    display:flex;
+                    align-items:center;
+                    gap:8px;
+                    margin-top:10px;
+                    font-size:13px;
+                    cursor:pointer;
+                "
+            >
+                <input
+                    type="checkbox"
+                    id="newCommentAnonymous"
+                >
+                ${
+                    language === "ru"
+                        ? "Написать анонимно"
+                        : language === "pl"
+                        ? "Napisz anonimowo"
+                        : "Post anonymously"
+                }
+            </label>
 
             <button
                 id="addCommentButton"
@@ -2709,118 +3149,215 @@ async function renderComments(questionId) {
             </div>
         `;
     } else {
-        list.innerHTML = comments
-            .map(
-                comment => `
+        const renderComment = (comment, depth = 0) => {
+            const children = comments.filter(
+                item =>
+                    Number(item.parent_comment_id) === Number(comment.id)
+            );
+
+            return `
+                <div
+                    class="comment-card"
+                    data-comment-id="${comment.id}"
+                    style="
+                        margin-top:12px;
+                        margin-left:${depth * 24}px;
+                        padding:14px;
+                        border:1px solid #333;
+                        border-radius:12px;
+                        background:#18181b;
+                    "
+                >
                     <div
-                        class="comment-card"
-                        data-comment-id="${comment.id}"
                         style="
-                            margin-top:12px;
-                            padding:14px;
-                            border:1px solid #333;
-                            border-radius:12px;
-                            background:#18181b;
+                            font-size:13px;
+                            font-weight:600;
+                            margin-bottom:6px;
                         "
                     >
-                        <div
-                            data-comment-text
-                            style="
-                                font-size:14px;
-                                line-height:1.5;
-                            "
-                        >
-                            ${comment.body}
-                        </div>
-
-                        <div
-                            style="
-                                display:flex;
-                                align-items:center;
-                                gap:12px;
-                                margin-top:10px;
-                            "
-                        >
-                            <div
-                                style="
-                                    font-size:12px;
-                                    opacity:0.55;
-                                "
-                            >
-                                ${new Date(comment.created_at).toLocaleString(
-                                    language === "ru"
-                                        ? "ru-RU"
-                                        : language === "pl"
-                                        ? "pl-PL"
-                                        : "en-GB"
-                                )}
-                            </div>
-
-                            <button
-                                type="button"
-                                class="translate-comment-button"
-                                data-comment-id="${comment.id}"
-                                style="
-                                    margin-left:auto;
-                                    padding:6px 10px;
-                                    border:1px solid #444;
-                                    border-radius:8px;
-                                    background:transparent;
-                                    color:#f4f4f7;
-                                    cursor:pointer;
-                                    font-size:12px;
-                                "
-                            >
-                                ${
-                                    language === "ru"
-                                        ? "Перевести"
-                                        : language === "pl"
-                                        ? "Przetłumacz"
-                                        : "Translate"
-                                }
-                            </button>
-                        </div>
+                        ${
+                            comment.is_anonymous
+                                ? "Аноним"
+                                : (
+                                    comment.profile?.display_name ||
+                                    comment.profile?.username ||
+                                    "Аноним"
+                                )
+                        }
                     </div>
-                `
-            )
+
+                    <div
+                        data-comment-text
+                        style="
+                            font-size:14px;
+                            line-height:1.5;
+                        "
+                    >
+                        ${comment.body}
+                    </div>
+
+                    <div
+                        style="
+                            display:flex;
+                            align-items:center;
+                            gap:8px;
+                            flex-wrap:wrap;
+                            margin-top:10px;
+                        "
+                    >
+                        <button
+                            type="button"
+                            class="reply-comment-button"
+                            data-comment-id="${comment.id}"
+                            style="
+                                padding:6px 10px;
+                                border:1px solid #444;
+                                border-radius:8px;
+                                background:transparent;
+                                color:#f4f4f7;
+                                cursor:pointer;
+                                font-size:12px;
+                            "
+                        >
+                            ${
+                                language === "ru"
+                                    ? "Ответить"
+                                    : language === "pl"
+                                    ? "Odpowiedz"
+                                    : "Reply"
+                            }
+                        </button>
+
+                        <div
+                            style="
+                                font-size:12px;
+                                opacity:0.55;
+                            "
+                        >
+                            ${new Date(comment.created_at).toLocaleString(
+                                language === "ru"
+                                    ? "ru-RU"
+                                    : language === "pl"
+                                    ? "pl-PL"
+                                    : "en-GB"
+                            )}
+                        </div>
+
+                        <button
+                            type="button"
+                            class="translate-comment-button"
+                            data-comment-id="${comment.id}"
+                            style="
+                                margin-left:auto;
+                                padding:6px 10px;
+                                border:1px solid #444;
+                                border-radius:8px;
+                                background:transparent;
+                                color:#f4f4f7;
+                                cursor:pointer;
+                                font-size:12px;
+                            "
+                        >
+                            ${
+                                language === "ru"
+                                    ? "Перевести"
+                                    : language === "pl"
+                                    ? "Przetłumacz"
+                                    : "Translate"
+                            }
+                        </button>
+                    </div>
+
+                    ${
+                        children.length
+                            ? children
+                                  .map(child =>
+                                      renderComment(
+                                          child,
+                                          depth + 1
+                                      )
+                                  )
+                                  .join("")
+                            : ""
+                    }
+                </div>
+            `;
+        };
+
+        const topLevelComments = comments.filter(
+            comment => !comment.parent_comment_id
+        );
+
+        list.innerHTML = topLevelComments
+            .map(comment => renderComment(comment))
             .join("");
     }
 
     document
         .getElementById("addCommentButton")
         ?.addEventListener("click", () => {
-            addComment(questionId);
+            const anonymousCheckbox =
+                document.getElementById("newCommentAnonymous");
+
+            const isAnonymous = anonymousCheckbox?.checked === true;
+
+            addComment(
+                questionId,
+                null,
+                null,
+                isAnonymous
+            );
         });
 
     document
         .getElementById("commentsList")
         ?.addEventListener("click", event => {
-            const button = event.target.closest(
+            const translateButton = event.target.closest(
                 ".translate-comment-button"
             );
 
-            if (!button) return;
+            if (translateButton) {
+                const commentId = Number(
+                    translateButton.dataset.commentId
+                );
 
-            const commentId = Number(
-                button.dataset.commentId
+                const comment = comments.find(
+                    item => Number(item.id) === commentId
+                );
+
+                if (!comment) return;
+
+                translateComment(comment, translateButton);
+                return;
+            }
+
+            const replyButton = event.target.closest(
+                ".reply-comment-button"
             );
 
-            const comment = comments.find(
-                item => Number(item.id) === commentId
-            );
+            if (replyButton) {
+                const commentId = Number(
+                    replyButton.dataset.commentId
+                );
 
-            if (!comment) return;
-
-            translateComment(comment, button);
+                showReplyForm(questionId, commentId);
+            }
         });
 }
 
-async function addComment(questionId) {
+async function addComment(
+    questionId,
+    parentCommentId = null,
+    commentBody = null,
+    isAnonymous = false
+) {
     const textarea = document.getElementById("newCommentText");
 
-    if (!textarea) return;
-
-    const body = textarea.value.trim();
+    const body = (
+        commentBody !== null
+            ? commentBody
+            : textarea?.value || ""
+    ).trim();
 
     if (!body) {
         alert(
@@ -2855,9 +3392,11 @@ async function addComment(questionId) {
         .from("comments")
         .insert({
             question_id: questionId,
+            parent_comment_id: parentCommentId,
             created_by: user.id,
             body,
-            original_language: detectedLanguage
+            original_language: detectedLanguage,
+            is_anonymous: isAnonymous
         });
 
     if (error) {
@@ -2874,9 +3413,130 @@ async function addComment(questionId) {
         return;
     }
 
-    textarea.value = "";
+    if (commentBody === null && textarea) {
+        textarea.value = "";
+    }
 
     await renderComments(questionId);
+}
+
+function showReplyForm(questionId, parentCommentId) {
+    const commentCard = document.querySelector(
+        `.comment-card[data-comment-id="${parentCommentId}"]`
+    );
+
+    if (!commentCard) return;
+
+    if (commentCard.querySelector(".reply-comment-form")) {
+        return;
+    }
+
+    const form = document.createElement("div");
+
+    form.className = "reply-comment-form";
+
+    form.style.marginTop = "12px";
+
+    form.innerHTML = `
+        <textarea
+            class="reply-comment-text"
+            placeholder="${
+                language === "ru"
+                    ? "Напишите ответ..."
+                    : language === "pl"
+                    ? "Napisz odpowiedź..."
+                    : "Write a reply..."
+            }"
+            style="
+                width:100%;
+                min-height:70px;
+                padding:10px;
+                border-radius:10px;
+                border:1px solid #444;
+                background:#18181b;
+                color:#f4f4f7;
+                resize:vertical;
+                box-sizing:border-box;
+            "
+        ></textarea>
+
+        <div
+            style="
+                display:flex;
+                gap:8px;
+                margin-top:8px;
+            "
+        >
+            <button
+                type="button"
+                class="submit-reply-button"
+                style="
+                    flex:1;
+                    padding:10px;
+                    border:none;
+                    border-radius:8px;
+                    background:#f4f4f7;
+                    color:#111;
+                    cursor:pointer;
+                    font-weight:600;
+                "
+            >
+                ${
+                    language === "ru"
+                        ? "Отправить"
+                        : language === "pl"
+                        ? "Wyślij"
+                        : "Send"
+                }
+            </button>
+
+            <button
+                type="button"
+                class="cancel-reply-button"
+                style="
+                    padding:10px 14px;
+                    border:1px solid #444;
+                    border-radius:8px;
+                    background:transparent;
+                    color:#f4f4f7;
+                    cursor:pointer;
+                "
+            >
+                ${
+                    language === "ru"
+                        ? "Отмена"
+                        : language === "pl"
+                        ? "Anuluj"
+                        : "Cancel"
+                }
+            </button>
+        </div>
+    `;
+
+    commentCard.appendChild(form);
+
+    form
+        .querySelector(".cancel-reply-button")
+        ?.addEventListener("click", () => {
+            form.remove();
+        });
+
+    form
+        .querySelector(".submit-reply-button")
+        ?.addEventListener("click", async () => {
+            const replyText = form
+                .querySelector(".reply-comment-text")
+                ?.value
+                .trim();
+
+            if (!replyText) return;
+
+            await addComment(
+                questionId,
+                parentCommentId,
+                replyText
+            );
+        });
 }
 
 async function translateComment(comment, button) {
