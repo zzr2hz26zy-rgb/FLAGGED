@@ -211,6 +211,7 @@ h1 {
 /* User actions */
 #createQuestionButton,
 #authButton,
+#profileButton,
 #logoutButton {
   display: block;
   width: min(320px, 90%);
@@ -230,6 +231,7 @@ h1 {
 }
 
 #authButton,
+#profileButton,
 #logoutButton {
   background: transparent;
   color: #f4f4f7;
@@ -238,6 +240,7 @@ h1 {
 
 #createQuestionButton:hover,
 #authButton:hover,
+#profileButton:hover,
 #logoutButton:hover {
   transform: translateY(-1px);
   opacity: 0.9;
@@ -245,6 +248,7 @@ h1 {
 
 #createQuestionButton:active,
 #authButton:active,
+#profileButton:active,
 #logoutButton:active {
   transform: translateY(0);
 }

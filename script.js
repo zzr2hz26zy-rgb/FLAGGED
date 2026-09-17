@@ -117,7 +117,7 @@ async function loadQuestionsFromSupabase() {
         .from("questions")
         .select("*")
         .eq("status", "published")
-    .order("id", { ascending: true });
+    .order("id", { ascending: false });
 
     if (questionsError) {
         console.error("Flagged: ошибка загрузки вопросов:", questionsError);
@@ -2175,19 +2175,75 @@ async function moderateSubmissionDecision(submissionId, decision) {
     result: data
   });
 
-  alert(
-    decision === "APPROVED"
-      ? language === "ru"
-        ? "Заявка одобрена."
+  if (decision === "APPROVED") {
+    const questionId = Number(data);
+
+    if (!questionId) {
+      console.error(
+        "Flagged: после одобрения не получен ID вопроса:",
+        data
+      );
+
+      alert(
+        language === "ru"
+          ? "Заявка одобрена, но ID нового вопроса не получен."
+          : language === "pl"
+          ? "Zgłoszenie zatwierdzone, ale nie otrzymano ID pytania."
+          : "Submission approved, but the new question ID was not returned."
+      );
+
+      showModerationPanel();
+      return;
+    }
+
+    const {
+      data: translationData,
+      error: translationError
+    } = await supabaseClient.functions.invoke(
+      "translate-approved-question",
+      {
+        body: {
+          question_id: questionId
+        }
+      }
+    );
+
+    if (translationError) {
+      console.error(
+        "Flagged: ошибка автоматического перевода:",
+        translationError
+      );
+
+      alert(
+        language === "ru"
+          ? "Заявка одобрена, но автоматический перевод не завершился."
+          : language === "pl"
+          ? "Zgłoszenie zatwierdzone, ale automatyczne tłumaczenie nie zostało ukończone."
+          : "Submission approved, but automatic translation did not complete."
+      );
+    } else {
+      console.log(
+        "Flagged: автоматический перевод завершён:",
+        translationData
+      );
+
+      alert(
+        language === "ru"
+          ? "Заявка одобрена и переведена."
+          : language === "pl"
+          ? "Zgłoszenie zatwierdzone i przetłumaczone."
+          : "Submission approved and translated."
+      );
+    }
+  } else {
+    alert(
+      language === "ru"
+        ? "Заявка отклонена."
         : language === "pl"
-        ? "Zgłoszenie zatwierdzone."
-        : "Submission approved."
-      : language === "ru"
-      ? "Заявка отклонена."
-      : language === "pl"
-      ? "Zgłoszenie odrzucone."
-      : "Submission rejected."
-  );
+        ? "Zgłoszenie odrzucone."
+        : "Submission rejected."
+    );
+  }
 
   showModerationPanel();
 }
