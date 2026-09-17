@@ -2380,12 +2380,46 @@ function showSituation() {
       </div>
 
 <div class="progress-info">
-    <span>${currentIndex + 1} / ${situations.length}</span>
+    <span>${
+        (() => {
+            const unansweredSituations = situations.filter(
+                item => !answeredQuestionIds.has(item.id)
+            );
+
+            const currentUnansweredIndex =
+                unansweredSituations.findIndex(
+                    item => item.id === situation.id
+                );
+
+            return `${currentUnansweredIndex + 1} / ${unansweredSituations.length}`;
+        })()
+    }</span>
 </div>
 
 <div class="progress-bar">
     <div class="progress-fill"
-         style="width: ${((currentIndex + 1) / situations.length) * 100}%;">
+         style="${
+             (() => {
+                 const unansweredSituations = situations.filter(
+                     item => !answeredQuestionIds.has(item.id)
+                 );
+
+                 const currentUnansweredIndex =
+                     unansweredSituations.findIndex(
+                         item => item.id === situation.id
+                     );
+
+                 const totalUnanswered =
+                     unansweredSituations.length;
+
+                 const progress =
+                     totalUnanswered > 0
+                         ? ((currentUnansweredIndex + 1) / totalUnanswered) * 100
+                         : 0;
+
+                 return `width: ${progress}%;`;
+             })()
+         }">
     </div>
 </div>
 
