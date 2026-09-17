@@ -97,10 +97,12 @@ const translations = {
 let flaggedCategories = [];
 let situations = [];
 
-async function loadQuestionsFromSupabase() {
+async function loadQuestionsFromSupabase(categorySlug = "all") {
     const { data: categories, error: categoriesError } = await supabaseClient
         .from("categories")
-        .select("*");
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
 
     if (categoriesError) {
         console.error("Flagged: ошибка загрузки категорий:", categoriesError);
@@ -113,11 +115,33 @@ async function loadQuestionsFromSupabase() {
         categories.map(category => [category.id, category.slug])
     );
 
-    const { data: questions, error: questionsError } = await supabaseClient
+    let questionsQuery = supabaseClient
         .from("questions")
         .select("*")
         .eq("status", "published")
-    .order("id", { ascending: false });
+        .order("id", { ascending: false });
+
+    if (categorySlug !== "all") {
+        const selectedCategory = categories.find(
+            category => category.slug === categorySlug
+        );
+
+        if (!selectedCategory) {
+            console.error(
+                "Flagged: выбранная категория не найдена:",
+                categorySlug
+            );
+            return false;
+        }
+
+        questionsQuery = questionsQuery.eq(
+            "category_id",
+            selectedCategory.id
+        );
+    }
+
+    const { data: questions, error: questionsError } =
+        await questionsQuery;
 
     if (questionsError) {
         console.error("Flagged: ошибка загрузки вопросов:", questionsError);
@@ -168,6 +192,7 @@ async function loadQuestionsFromSupabase() {
 let currentIndex = 0;
 let score = 0;
 let gameStarted = false;
+let selectedCategorySlug = "all";
 let language = localStorage.getItem("flaggedLanguage") || "en";
 
 const card = document.querySelector(".card");
@@ -269,7 +294,48 @@ function updateHeader() {
 }
 
 
-function showStartScreen() {
+async function setHeaderActionsVisible(visible) {
+    const actionIds = [
+        "createQuestionButton",
+        "authButton",
+        "profileButton",
+        "logoutButton",
+        "moderationButton"
+    ];
+
+    if (!visible) {
+        actionIds.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.style.display = "none";
+            }
+        });
+
+        return;
+    }
+
+    const createQuestionButton =
+        document.getElementById("createQuestionButton");
+
+    const moderationButton =
+        document.getElementById("moderationButton");
+
+    if (createQuestionButton) {
+        createQuestionButton.style.display = "block";
+    }
+
+    if (moderationButton) {
+        moderationButton.style.display = "none";
+    }
+
+    await updateAuthButtons();
+    await initModerationAccess();
+}
+
+
+async function showStartScreen() {
+    await setHeaderActionsVisible(true);
+
     const startTexts = {
         en: {
             intro: "Real situations. Many questions. What do people think?",
@@ -285,63 +351,286 @@ function showStartScreen() {
         }
     };
 
+    if (!flaggedCategories.length) {
+        const loaded = await loadQuestionsFromSupabase("all");
+
+        if (!loaded) {
+            card.innerHTML = `
+                <div style="
+                    text-align:center;
+                    color:#999;
+                    padding:30px 10px;
+                ">
+                    ${
+                        language === "ru"
+                            ? "Не удалось загрузить категории."
+                            : language === "pl"
+                            ? "Nie udało się załadować kategorii."
+                            : "Could not load categories."
+                    }
+                </div>
+            `;
+            return;
+        }
+    }
+
     card.innerHTML = `
         <div style="
-            font-size: 42px;
-            margin-bottom: 20px;
+            font-size:42px;
+            margin-bottom:20px;
         ">
             🚩
         </div>
 
         <h2 style="
-            font-size: 28px;
-            margin-bottom: 18px;
+            font-size:28px;
+            margin-bottom:18px;
         ">
             ${t().title}
         </h2>
 
         <p style="
-            color: #999;
-            font-size: 17px;
-            line-height: 1.6;
-            margin-bottom: 30px;
+            color:#999;
+            font-size:17px;
+            line-height:1.6;
+            margin-bottom:30px;
         ">
             ${startTexts[language].intro}
         </p>
 
         <button id="playButton"
+            type="button"
             style="
-                width: 100%;
-                padding: 17px;
-                border: none;
-                border-radius: 15px;
-                background: white;
-                color: black;
-                font-size: 16px;
-                font-weight: bold;
-                cursor: pointer;
-            ">
+                width:100%;
+                padding:17px;
+                border:none;
+                border-radius:15px;
+                background:white;
+                color:black;
+                font-size:16px;
+                font-weight:bold;
+                cursor:pointer;
+            "
+        >
             ${startTexts[language].play}
         </button>
     `;
 
     document
-  .getElementById("playButton")
-  .addEventListener("click", async () => {
-    gameStarted = true;
-    currentIndex = 0;
-    score = 0;
+        .getElementById("playButton")
+        .addEventListener("click", () => {
+            showCategoryScreen();
+        });
+}
 
-    const questionsLoaded = await loadQuestionsFromSupabase();
 
-    if (!questionsLoaded) {
-      console.error("Flagged: не удалось загрузить вопросы из Supabase");
-      return;
+async function showCategoryScreen() {
+    await setHeaderActionsVisible(false);
+
+    const categoryTexts = {
+        en: {
+            choose: "Choose a category",
+            all: "All questions",
+            play: "PLAY →",
+            back: "← Back",
+            loading: "Loading categories..."
+        },
+        ru: {
+            choose: "Выберите категорию",
+            all: "Все вопросы",
+            play: "ИГРАТЬ →",
+            back: "← Назад",
+            loading: "Загрузка категорий..."
+        },
+        pl: {
+            choose: "Wybierz kategorię",
+            all: "Wszystkie pytania",
+            play: "GRAJ →",
+            back: "← Wróć",
+            loading: "Ładowanie kategorii..."
+        }
+    };
+
+    if (!flaggedCategories.length) {
+        card.innerHTML = `
+            <div style="
+                text-align:center;
+                color:#999;
+                padding:30px 10px;
+            ">
+                ${categoryTexts[language].loading}
+            </div>
+        `;
+
+        const loaded = await loadQuestionsFromSupabase("all");
+
+        if (!loaded) {
+            card.innerHTML = `
+                <div style="
+                    text-align:center;
+                    color:#999;
+                    padding:30px 10px;
+                ">
+                    ${
+                        language === "ru"
+                            ? "Не удалось загрузить категории."
+                            : language === "pl"
+                            ? "Nie udało się загрузить категории."
+                            : "Could not load categories."
+                    }
+                </div>
+            `;
+            return;
+        }
     }
 
-    await loadAnsweredQuestionIds();
-    showNextUnansweredQuestion();
-  });
+    const activeCategories = flaggedCategories
+        .filter(category => category.is_active)
+        .sort((a, b) => a.sort_order - b.sort_order);
+
+    if (
+        selectedCategorySlug !== "all" &&
+        !activeCategories.some(
+            category => category.slug === selectedCategorySlug
+        )
+    ) {
+        selectedCategorySlug = "all";
+    }
+
+    card.innerHTML = `
+        <h2 style="
+            font-size:26px;
+            margin-bottom:22px;
+        ">
+            ${categoryTexts[language].choose}
+        </h2>
+
+        <div id="categoryList" style="
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+        ">
+            ${activeCategories
+                .map(category => {
+                    const selected =
+                        selectedCategorySlug === category.slug;
+
+                    return `
+                        <button
+                            type="button"
+                            class="category-choice"
+                            data-category="${category.slug}"
+                            style="
+                                width:100%;
+                                padding:14px 16px;
+                                border-radius:12px;
+                                border:1px solid ${
+                                    selected ? "#ffffff" : "#444"
+                                };
+                                background:${
+                                    selected ? "#ffffff" : "transparent"
+                                };
+                                color:${
+                                    selected ? "#000000" : "#f4f4f7"
+                                };
+                                font-size:15px;
+                                font-weight:600;
+                                cursor:pointer;
+                                text-align:left;
+                            "
+                        >
+                            ${category[`name_${language}`] || category.name}
+                        </button>
+                    `;
+                })
+                .join("")}
+
+            <button
+                type="button"
+                class="category-choice"
+                data-category="all"
+                style="
+                    width:100%;
+                    padding:15px 16px;
+                    margin-top:4px;
+                    border-radius:12px;
+                    border:1px solid ${
+                        selectedCategorySlug === "all"
+                            ? "#ffffff"
+                            : "#444"
+                    };
+                    background:${
+                        selectedCategorySlug === "all"
+                            ? "#ffffff"
+                            : "transparent"
+                    };
+                    color:${
+                        selectedCategorySlug === "all"
+                            ? "#000000"
+                            : "#f4f4f7"
+                    };
+                    font-size:15px;
+                    font-weight:600;
+                    cursor:pointer;
+                    text-align:left;
+                "
+            >
+                ${categoryTexts[language].all}
+            </button>
+        </div>
+
+        <button id="backToStartButton"
+            type="button"
+            style="
+                width:100%;
+                padding:14px 16px;
+                margin-top:8px;
+                border-radius:12px;
+                border:1px solid #444;
+                background:transparent;
+                color:#f4f4f7;
+                font-size:15px;
+                font-weight:600;
+                cursor:pointer;
+            "
+        >
+            ${categoryTexts[language].back}
+        </button>
+    `;
+
+    card
+        .querySelectorAll(".category-choice")
+        .forEach(button => {
+            button.addEventListener("click", async () => {
+                selectedCategorySlug =
+                    button.dataset.category || "all";
+
+                gameStarted = true;
+                currentIndex = 0;
+                score = 0;
+
+                const questionsLoaded =
+                    await loadQuestionsFromSupabase(
+                        selectedCategorySlug
+                    );
+
+                if (!questionsLoaded) {
+                    console.error(
+                        "Flagged: не удалось загрузить вопросы из Supabase"
+                    );
+                    return;
+                }
+
+                await loadAnsweredQuestionIds();
+                showNextUnansweredQuestion();
+            });
+        });
+
+    document
+        .getElementById("backToStartButton")
+        .addEventListener("click", () => {
+            showStartScreen();
+        });
 }
 
 
@@ -366,70 +655,142 @@ async function showQuestionComposer() {
 
   const categoryKeywords = {
     relationships: [
-      "партнер", "партнёр", "муж", "жена", "отношен", "пар", "partner",
-      "mąż", "żona", "relacj"
+      "парень", "девушк", "парня", "девушку",
+      "отношен", "знакомств", "свидан", "встреча",
+      "встречаем", "встречаюсь", "бойфренд", "бойфрен",
+      "девушка", "мужчина", "женщина",
+      "partner", "partnerka", "chłopak", "dziewczyn",
+      "relacj", "randk", "spotkan"
     ],
+
     family: [
-      "семь", "родител", "ребен", "ребён", "сын", "дочь", "доч", "мам", "пап",
-      "rodzin", "dziecko", "rodzic"
+      "семь", "семей", "муж", "жена", "супруг", "супруги",
+      "брак", "женат", "замуж", "развод", "свекров",
+      "свекр", "тещ", "тест", "родствен", "бабушк", "дедушк",
+      "семейств",
+      "mąż", "żona", "małżeń", "rozwód", "rodzin",
+      "teści", "krewn"
     ],
+
+    parenting: [
+      "ребен", "ребён", "дет", "малыш", "малышк",
+      "сын", "доч", "дочь", "воспитан", "родитель",
+      "мам", "пап", "материн", "отцовств",
+      "подрост", "подростков",
+      "садик", "детсад", "детский сад", "школ", "учеб", "урок",
+      "дошколь", "родительств",
+      "dziecko", "dzieci", "maluch", "syn", "córk",
+      "wychowan", "rodzic", "macierzy", "ojcost",
+      "nastolat", "przedszkol", "szkoł", "rodziciel"
+    ],
+
     friendship: [
-      "друг", "подруг", "дружб", "приетел", "при́ятель",
-      "przyjac", "przyjaź"
+      "друг", "друга", "друз", "подруг", "дружб",
+      "приятел", "приятель",
+      "дружеск", "товарищ",
+      "przyjac", "przyjaciół", "przyjaź", "koleż",
+      "znajom"
     ],
+
     psychology: [
-      "чувств", "страх", "тревог", "пережив", "самооцен", "психолог", "эмоци",
-      "uczuc", "lęk", "emocj", "psycholog"
+      "чувств", "эмоци", "страх", "тревог", "пережив",
+      "самооцен", "мотивац", "привычк", "психолог",
+      "стресс", "самооценк", "уверен", "неуверен",
+      "границ", "личные границ", "прокраст", "откладыва",
+      "одиночеств", "эмоцион", "самопринят",
+      "uczuc", "emocj", "lęk", "stres", "motyw",
+      "nawyk", "psycholog", "samoocen", "granic",
+      "prokrast", "samotn", "pewnoś"
     ],
-    money: [
-      "деньг", "доход", "зарплат", "долг", "деньги", "расход", "бюджет",
-      "pienią", "dochód", "dług", "budżet"
-    ],
-    work: [
-      "работ", "началь", "коллег", "зарплат", "карьер", "офис",
-      "praca", "szef", "kolega", "karier"
-    ],
+
     social: [
-      "обще", "люд", "соци", "толп", "обществен",
-      "społ", "ludz", "towarz"
+      "обще", "обществ", "соци", "люд", "незнаком",
+      "очеред", "очереди", "транспорт", "автобус", "трамва",
+      "метро", "кафе", "ресторан", "магазин", "подъезд",
+      "сосед", "улиц", "публич", "общественн", "правил",
+      "вежлив", "нормально ли", "мешает", "громк",
+      "очередь", "парковк",
+      "społ", "ludz", "nieznaj", "kolejk", "transport",
+      "autobus", "tramwaj", "metro", "kawiarn", "restaur",
+      "sklep", "sąsiad", "ulic", "publicz", "zasad",
+      "grzecz", "przeszkadz", "głoś"
     ],
+
+    work: [
+      "работ", "работа", "работы", "работать", "началь",
+      "коллег", "карьер", "зарплат", "офис", "ваканс",
+      "собеседован", "увольн", "нанима", "сотрудник",
+      "работодател", "начальств", "отпуск", "сверхуроч",
+      "удалённ", "удаленн", "професс", "должност",
+      "стажиров", "фриланс",
+      "praca", "pracę", "szef", "kierownik", "kolega",
+      "karier", "pensj", "wynagrod", "biur", "rekrut",
+      "zwoln", "pracownik", "pracodaw", "urlop",
+      "nadgodzin", "zdaln", "zawod", "stanowisk", "staż"
+    ],
+
+    money: [
+      "деньг", "доход", "зарплат", "долг", "расход", "бюджет",
+      "сбереж", "накоплен", "финанс", "кредит", "займ",
+      "влож", "инвест", "инвести", "капитал", "подушк",
+      "бизнес", "прибыл", "убыт", "стоим", "цен",
+      "рассроч", "кредитк", "ипотек", "аренд", "эконом",
+      "финансов",
+      "pienią", "dochód", "dług", "wydatek", "budżet",
+      "oszczęd", "finans", "kredyt", "pożycz", "inwest",
+      "kapitał", "biznes", "zysk", "strat", "cen", "rat",
+      "hipotek", "oszczędnoś"
+    ],
+
+    beauty: [
+      "волос", "парикмах", "салон", "мастер", "клиент",
+      "кератин", "ботокс", "нанопласт", "маникюр", "педикюр",
+      "ногт", "косметолог", "бров", "ресниц", "макияж",
+      "косметик", "процедур", "услуг", "запис", "предоплат",
+      "возврат", "отмен", "опозда", "окошк", "отзыв",
+      "фотограф", "фото до", "фото после",
+      "włos", "fryzjer", "salon", "stylist", "klient",
+      "keratyn", "botox", "nanoplast", "manicure", "pedicure",
+      "paznok", "kosmetolog", "brwi", "rzęs", "makija",
+      "kosmet", "zabieg", "usług", "rezerw", "zalicz",
+      "zwrot", "odwoł", "spóź", "opini", "zdję"
+    ],
+
+    health: [
+      "здоров", "болезн", "симптом", "врач", "доктор",
+      "лечение", "лечен", "лекарств", "таблет", "анализ",
+      "обследован", "диагноз", "профилакти", "витамин",
+      "привив", "вакцин", "температур", "давлен", "пульс",
+      "самочувств", "сон", "питани", "диет", "народн",
+      "средств", "медицин", "организм",
+      "zdrow", "chorob", "objaw", "lekar", "leczen",
+      "lek", "tablet", "badani", "diagnoz", "profilakty",
+      "witamin", "szczep", "temperatur", "ciśn", "tętno",
+      "samopocz", "sen", "odżyw", "diet", "medycz"
+    ],
+
+    technology: [
+      "телефон", "айфон", "iphone", "android", "андроид",
+      "ios", "компьютер", "ноутбук", "планшет", "гаджет",
+      "технолог", "интернет", "приложен", "програм", "сайт",
+      "смартфон", "умн", "часы", "подписк", "облак",
+      "искусственн", "искусственный интеллект", "ии", "ai",
+      "чатгпт", "chatgpt", "нейросет", "генерац",
+      "алгоритм", "цифров",
+      "telefon", "iphone", "android", "ios", "komputer",
+      "laptop", "tablet", "gadżet", "technolog", "internet",
+      "aplikac", "program", "smartfon", "zegarek", "chmur",
+      "sztuczn", "chatgpt", "ai", "algorytm", "cyfrow"
+    ],
+
     politics: [
       "полит", "выбор", "государ", "президент", "правитель",
-      "polity", "wybory", "rząd", "prezydent"
-    ],
-    travel: [
-      "путешеств", "поездк", "отпуск", "самолёт", "самолет", "отел",
-      "podró", "wakac", "hotel", "lot"
-    ],
-    education: [
-      "учёб", "учеб", "университет", "школ", "образован", "экзамен",
-      "nauk", "szkoł", "stud", "egzamin"
-    ],
-    beauty: [
-      "волос", "красот", "макияж", "кож", "маникюр", "внешност",
-      "włos", "urod", "makija", "skór", "manikiur"
-    ],
-    sport: [
-      "спорт", "трениров", "фитнес", "зал", "бег", "йог",
-      "sport", "trening", "fitness", "biegan"
-    ],
-    entertainment: [
-      "фильм", "сериал", "музык", "игр", "кино", "развлеч",
-      "film", "serial", "muzyk", "gra", "rozryw"
-    ],
-    technology: [
-      "телефон", "компьютер", "технолог", "интернет", "приложен", "ai",
-      "telefon", "komputer", "technolog", "internet", "aplikac"
-    ],
-    health: [
-      "здоров", "болезн", "врач", "лечение", "самочувств",
-      "zdrow", "chorob", "lekar", "leczen", "samopocz"
-    ],
-    everyday: [
-      "быт", "дом", "магазин", "сосед", "повседнев", "уборк",
-      "dom", "zakup", "sąsiad", "codzien"
+      "парламент", "партия", "министр", "закон",
+      "polity", "wybory", "państw", "prezydent", "rząd",
+      "parlament", "partia", "minister", "ustaw"
     ]
   };
+
 
   const getCategorySuggestions = (questionText) => {
     const normalizedText = questionText.toLowerCase();
@@ -3036,22 +3397,57 @@ function showFinalResult() {
 
 
 function showAllQuestionsCompleted() {
-    const messages = {
-        ru: {
-            title: "Все доступные вопросы пройдены",
-            text: "Ты уже ответил(а) на все доступные вопросы. Новые вопросы появятся здесь позже."
-        },
-        pl: {
-            title: "Wszystkie dostępne pytania zostały ukończone",
-            text: "Odpowiedziałeś już na wszystkie dostępne pytania. Nowe pytania pojawią się tutaj później."
-        },
-        en: {
-            title: "All available questions completed",
-            text: "You have already answered all available questions. New questions will appear here later."
-        }
-    };
+    const noQuestions = situations.length === 0;
 
-    const message = messages[language] || messages.en;
+    const messages = noQuestions
+        ? {
+            ru: {
+                title: selectedCategorySlug === "all"
+                    ? "Пока нет опубликованных вопросов"
+                    : "В этой категории пока нет вопросов",
+                text: selectedCategorySlug === "all"
+                    ? "Новые вопросы появятся здесь позже."
+                    : "Попробуйте выбрать другую категорию.",
+                back: "Выбрать другую категорию"
+            },
+            pl: {
+                title: selectedCategorySlug === "all"
+                    ? "Brak opublikowanych pytań"
+                    : "W tej kategorii nie ma jeszcze pytań",
+                text: selectedCategorySlug === "all"
+                    ? "Nowe pytania pojawią się tutaj później."
+                    : "Spróbuj wybrać inną kategorię.",
+                back: "Wybierz inną kategorię"
+            },
+            en: {
+                title: selectedCategorySlug === "all"
+                    ? "No published questions yet"
+                    : "There are no questions in this category yet",
+                text: selectedCategorySlug === "all"
+                    ? "New questions will appear here later."
+                    : "Try choosing another category.",
+                back: "Choose another category"
+            }
+        }
+        : {
+            ru: {
+                title: "Все доступные вопросы пройдены",
+                text: "Ты уже ответил(а) на все доступные вопросы. Новые вопросы появятся здесь позже.",
+                back: "Выбрать другую категорию"
+            },
+            pl: {
+                title: "Wszystkie dostępne pytania zostały ukończone",
+                text: "Odpowiedziałeś już na wszystkie доступные pytania. Nowe pytania pojawią się tutaj później.",
+                back: "Wybierz inną kategorię"
+            },
+            en: {
+                title: "All available questions completed",
+                text: "You have already answered all available questions. New questions will appear here later.",
+                back: "Choose another category"
+            }
+        };
+
+    const message = (messages[language] || messages.en);
 
     card.innerHTML = `
         <div class="category">🚩 FLAGGED</div>
@@ -3060,10 +3456,32 @@ function showAllQuestionsCompleted() {
             ${message.title}
         </div>
 
-        <div style="font-size: 18px; line-height: 1.6; color: #999;">
+        <div style="font-size: 18px; line-height: 1.6; color: #999; margin-bottom: 25px;">
             ${message.text}
         </div>
+
+        <button id="backToCategoriesButton"
+            type="button"
+            style="
+                width:100%;
+                padding:14px 16px;
+                margin-top:6px;
+                border-radius:12px;
+                border:1px solid #444;
+                background:transparent;
+                color:#f4f4f7;
+                font-size:15px;
+                font-weight:600;
+                cursor:pointer;
+            "
+        >
+            ${message.back}
+        </button>
     `;
+
+    document
+        .getElementById("backToCategoriesButton")
+        .addEventListener("click", showCategoryScreen);
 }
 
 async function restartGame() {
