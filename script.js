@@ -1001,7 +1001,7 @@ document
 
 
 
-async function showProfileSetup() {
+async function showProfileSetup(fromSettings = false) {
     card.innerHTML = `
         <div class="category">FLAGGED</div>
 
@@ -1159,7 +1159,15 @@ async function showProfileSetup() {
                 return;
             }
 
-            showNextUnansweredQuestion();
+            if (fromSettings) {
+                if (gameStarted && situations.length > 0) {
+                    showSituation();
+                } else {
+                    showStartScreen();
+                }
+            } else {
+                showNextUnansweredQuestion();
+            }
         });
 }
 
@@ -1527,9 +1535,10 @@ async function showAuthComposer() {
 
 async function updateAuthButtons() {
   const authButton = document.getElementById("authButton");
+  const profileButton = document.getElementById("profileButton");
   const logoutButton = document.getElementById("logoutButton");
 
-  if (!authButton || !logoutButton) return;
+  if (!authButton || !profileButton || !logoutButton) return;
 
   const {
     data: { user }
@@ -1537,7 +1546,15 @@ async function updateAuthButtons() {
 
   if (user) {
     authButton.style.display = "none";
+    profileButton.style.display = "block";
     logoutButton.style.display = "block";
+
+    profileButton.textContent =
+      language === "ru"
+        ? "Профиль"
+        : language === "pl"
+        ? "Profil"
+        : "Profile";
 
     logoutButton.textContent =
       language === "ru"
@@ -1547,6 +1564,7 @@ async function updateAuthButtons() {
         : "Sign out";
   } else {
     authButton.style.display = "block";
+    profileButton.style.display = "none";
     logoutButton.style.display = "none";
 
     authButton.textContent =
@@ -1561,6 +1579,10 @@ async function updateAuthButtons() {
 document
   .getElementById("authButton")
   ?.addEventListener("click", showAuthComposer);
+
+document
+  .getElementById("profileButton")
+  ?.addEventListener("click", () => showProfileSetup(true));
 
 document
   .getElementById("logoutButton")
@@ -3177,11 +3199,23 @@ async function renderComments(questionId) {
                     >
                         ${
                             comment.is_anonymous
-                                ? "Аноним"
+                                ? (
+                                    language === "ru"
+                                        ? "Аноним"
+                                        : language === "pl"
+                                        ? "Anonim"
+                                        : "Anonymous"
+                                )
                                 : (
                                     comment.profile?.display_name ||
                                     comment.profile?.username ||
-                                    "Аноним"
+                                    (
+                                        language === "ru"
+                                            ? "Аноним"
+                                            : language === "pl"
+                                            ? "Anonim"
+                                            : "Anonymous"
+                                    )
                                 )
                         }
                     </div>
