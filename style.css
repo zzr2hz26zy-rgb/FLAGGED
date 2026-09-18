@@ -352,8 +352,8 @@ h1 {
   border: 1px solid #444 !important;
 }
 
-/* Poll / Situation answer options */
-.buttons .poll-option {
+/* Answer options */
+.buttons .answer-option {
     background: #242428;
     color: #f4f4f7;
     border: 1px solid #45454d;
@@ -361,25 +361,25 @@ h1 {
     box-sizing: border-box;
 }
 
-.buttons .poll-option:hover {
+.buttons .answer-option:hover {
     background: #2d2d33;
     border-color: #666670;
 }
 
-.buttons .poll-option:focus-visible {
+.buttons .answer-option:focus-visible {
     outline: 2px solid #f4f4f7;
     outline-offset: 2px;
 }
 
-/* Force readable poll/situation options */
-.buttons button.poll-option {
+/* Force readable answer options */
+.buttons button.answer-option {
     background: #242428 !important;
     background-color: #242428 !important;
     color: #f4f4f7 !important;
     border: 1px solid #45454d !important;
 }
 
-.buttons button.poll-option:hover {
+.buttons button.answer-option:hover {
     background: #2d2d33 !important;
     background-color: #2d2d33 !important;
     color: #ffffff !important;
@@ -1546,4 +1546,589 @@ h1 {
     fill: #ff2b2b;
     animation: none !important;
     transform: none !important;
+}
+
+/* ============================================================
+   FLAGGED — question card visual redesign
+   Visual only. No logic changes.
+   ============================================================ */
+
+/* Карточка вопроса */
+body:has(.card .situation) .card {
+    max-width: 560px;
+    margin-top: 22px;
+    padding: 28px 24px 22px;
+    border-radius: 22px;
+}
+
+/* Категория */
+body:has(.card .situation) .category {
+    margin-bottom: 20px;
+    font-size: 12px;
+    letter-spacing: 2.5px;
+    color: #8f8f93;
+}
+
+/* Основной текст ситуации */
+body:has(.card .situation) .situation {
+    margin: 0 auto 20px;
+    max-width: 500px;
+    font-size: 25px;
+    line-height: 1.38;
+    font-weight: 700;
+}
+
+/* "Что думаешь?" */
+body:has(.card .situation) .question {
+    margin: 0 0 14px;
+    color: #a0a0a4;
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+/* Ответы */
+body:has(.card .situation) .buttons {
+    gap: 9px;
+}
+
+/* Все кнопки ответа */
+body:has(.card .situation) .buttons button {
+    min-height: 52px;
+    padding: 14px 18px;
+    border-radius: 13px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+/* Варианты ответов */
+body:has(.card .situation) .buttons .answer-option {
+    background: #202023;
+    color: #f4f4f7;
+    border: 1px solid #3b3b40;
+}
+
+body:has(.card .situation) .buttons .answer-option:hover {
+    background: #29292d;
+    border-color: #66666c;
+}
+
+/* Стандартные варианты */
+body:has(.card .situation) .buttons .normal,
+body:has(.card .situation) .buttons .hmm,
+body:has(.card .situation) .buttons .red {
+    border: 1px solid transparent;
+}
+
+/* Прогресс */
+body:has(.card .situation) .progress-info {
+    margin-top: 18px;
+    color: #777;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+body:has(.card .situation) .progress-bar {
+    height: 5px;
+    margin-top: 8px;
+    background: #29292c;
+}
+
+body:has(.card .situation) .progress-fill {
+    height: 100%;
+}
+
+/* Комментарии */
+body:has(.card .situation) .comments-section {
+    margin-top: 22px;
+}
+
+/* Мобильный экран */
+@media (max-width: 600px) {
+
+    body:has(.card .situation) .card {
+        margin-top: 18px;
+        padding: 24px 18px 20px;
+        border-radius: 20px;
+    }
+
+    body:has(.card .situation) .category {
+        margin-bottom: 16px;
+        font-size: 11px;
+        letter-spacing: 2.2px;
+    }
+
+    body:has(.card .situation) .situation {
+        margin-bottom: 18px;
+        font-size: 22px;
+        line-height: 1.36;
+    }
+
+    body:has(.card .situation) .question {
+        margin-bottom: 12px;
+        font-size: 14px;
+    }
+
+    body:has(.card .situation) .buttons {
+        gap: 8px;
+    }
+
+    body:has(.card .situation) .buttons button {
+        min-height: 50px;
+        padding: 13px 16px;
+        font-size: 14px;
+    }
+
+    body:has(.card .situation) .progress-info {
+        margin-top: 16px;
+    }
+
+    body:has(.card .situation) .comments-section {
+        margin-top: 20px;
+    }
+}
+
+/* ============================================================
+   Global compact language selector
+   Applies to all Flagged screens
+   Visual only
+   ============================================================ */
+
+.app {
+    position: relative;
+}
+
+/* Только текущий язык в углу */
+.app .language-selector {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    left: auto;
+    z-index: 100;
+    display: block;
+    margin: 0;
+}
+
+/* Маленький флаг */
+.app .language-toggle {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 1px solid #333;
+    border-radius: 10px;
+    background: #18181a;
+    color: #ffffff;
+    font-size: 19px;
+    line-height: 38px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.app .language-toggle:hover {
+    background: #242427;
+    transform: translateY(-1px);
+}
+
+/* Меню раскрывается внутрь экрана */
+.app .language-menu {
+    display: none;
+    position: absolute;
+    top: 44px;
+    right: 0;
+    left: auto;
+    min-width: 145px;
+    padding: 5px;
+    border: 1px solid #333;
+    border-radius: 12px;
+    background: #18181a;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.app .language-menu.open {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.app .language-menu button {
+    width: 100%;
+    padding: 9px 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #f4f4f7;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.app .language-menu button:hover {
+    background: #29292c;
+}
+
+.app .language-menu button span {
+    margin-left: 4px;
+}
+
+/* На главном экране оставляем чуть больше воздуха под переключателем */
+@media (max-width: 600px) {
+    .app .language-selector {
+        top: 14px;
+        right: 14px;
+    }
+
+    .app .language-toggle {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+        line-height: 36px;
+    }
+}
+
+/* ============================================================
+   FLAGGED — question card visual polish v2
+   Visual only. No logic changes.
+   ============================================================ */
+
+/* Категория */
+body:has(.card .situation) .category {
+    margin-bottom: 18px;
+    color: #a0a0a4;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2.4px;
+}
+
+/* Ситуация */
+body:has(.card .situation) .situation {
+    margin-bottom: 18px;
+}
+
+/* "Что думаешь?" */
+body:has(.card .situation) .question {
+    margin-bottom: 13px;
+    color: #96969b;
+    font-size: 14px;
+}
+
+/* Кнопки ответа */
+body:has(.card .situation) .buttons {
+    gap: 8px;
+}
+
+body:has(.card .situation) .buttons button {
+    min-height: 50px;
+    border-radius: 12px;
+}
+
+/* Прогресс */
+body:has(.card .situation) .progress-info {
+    margin-top: 14px;
+    color: #747479;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+}
+
+body:has(.card .situation) .progress-bar {
+    height: 4px;
+    margin-top: 7px;
+    border-radius: 999px;
+    background: #2a2a2d;
+}
+
+body:has(.card .situation) .progress-fill {
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+
+/* Комментарии */
+body:has(.card .situation) .comments-section {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #29292d;
+}
+
+body:has(.card .situation) .comments-section h3 {
+    margin: 0 0 14px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+/* Мобильный экран */
+@media (max-width: 600px) {
+
+    body:has(.card .situation) .category {
+        margin-bottom: 16px;
+        font-size: 11px;
+        letter-spacing: 2.2px;
+    }
+
+    body:has(.card .situation) .situation {
+        margin-bottom: 17px;
+    }
+
+    body:has(.card .situation) .question {
+        margin-bottom: 12px;
+        font-size: 14px;
+    }
+
+    body:has(.card .situation) .buttons {
+        gap: 8px;
+    }
+
+    body:has(.card .situation) .buttons button {
+        min-height: 50px;
+    }
+
+    body:has(.card .situation) .progress-info {
+        margin-top: 13px;
+    }
+
+    body:has(.card .situation) .comments-section {
+        margin-top: 22px;
+        padding-top: 15px;
+    }
+
+    body:has(.card .situation) .comments-section h3 {
+        margin-bottom: 12px;
+        font-size: 17px;
+    }
+}
+
+/* ============================================================
+   FLAGGED — comments block visual polish
+   Visual only. No logic changes.
+   ============================================================ */
+
+body:has(.card .situation) .comments-section {
+    margin-top: 20px !important;
+    padding-top: 14px;
+    border-top: 1px solid #29292d;
+}
+
+/* Заголовок комментариев */
+body:has(.card .situation) .comments-section h3 {
+    margin: 0 0 12px !important;
+    font-size: 17px;
+    line-height: 1.3;
+}
+
+/* Поле комментария */
+body:has(.card .situation) #newCommentText {
+    min-height: 78px !important;
+    padding: 11px 12px !important;
+    border-radius: 11px !important;
+    font-size: 14px;
+    line-height: 1.45;
+    outline: none;
+}
+
+body:has(.card .situation) #newCommentText:focus {
+    border-color: #666 !important;
+}
+
+/* Анонимность */
+body:has(.card .situation) #newCommentText + label {
+    margin-top: 7px !important;
+    gap: 7px !important;
+    font-size: 12px !important;
+    color: #a0a0a4;
+}
+
+/* Кнопка комментария */
+body:has(.card .situation) #addCommentButton {
+    margin-top: 8px !important;
+    padding: 11px 12px !important;
+    border-radius: 11px !important;
+    font-size: 14px;
+}
+
+/* Список комментариев */
+body:has(.card .situation) #commentsList {
+    margin-top: 14px !important;
+}
+
+/* Отдельный комментарий */
+body:has(.card .situation) .comment-card {
+    margin-top: 9px !important;
+    padding: 12px !important;
+    border-radius: 11px !important;
+}
+
+/* Текст комментария */
+body:has(.card .situation) .comment-card [data-comment-text] {
+    font-size: 13px !important;
+    line-height: 1.45 !important;
+}
+
+/* Ответить / дата */
+body:has(.card .situation) .comment-card button {
+    font-size: 11px !important;
+}
+
+/* Мобильный экран */
+@media (max-width: 600px) {
+
+    body:has(.card .situation) .comments-section {
+        margin-top: 19px !important;
+        padding-top: 13px;
+    }
+
+    body:has(.card .situation) .comments-section h3 {
+        margin-bottom: 11px !important;
+        font-size: 17px;
+    }
+
+    body:has(.card .situation) #newCommentText {
+        min-height: 76px !important;
+    }
+
+    body:has(.card .situation) #addCommentButton {
+        margin-top: 7px !important;
+    }
+
+    body:has(.card .situation) #commentsList {
+        margin-top: 13px !important;
+    }
+}
+
+/* ============================================================
+   FLAGGED — result screen next button
+   Visual only
+   ============================================================ */
+
+.next-button {
+    display: block;
+    width: min(280px, 85%);
+    margin: 22px auto 0 !important;
+    padding: 13px 20px;
+    border: 1px solid #444;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #111111;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    transition:
+        transform 0.15s ease,
+        background 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.next-button:hover {
+    transform: translateY(-1px);
+    background: #eeeeee;
+}
+
+.next-button:active {
+    transform: scale(0.98);
+}
+
+@media (max-width: 600px) {
+
+    .next-button {
+        width: 100%;
+        margin-top: 20px !important;
+        padding: 13px 18px;
+        border-radius: 11px;
+        font-size: 14px;
+    }
+
+}
+
+/* ============================================================
+   FLAGGED — completed / empty category screen
+   Visual only
+   ============================================================ */
+
+.card:has(#backToCategoriesButton) {
+    max-width: 520px;
+    margin-top: 22px;
+    padding: 26px 24px 22px;
+    border-radius: 22px;
+}
+
+/* Маленький FLAGGED внутри карточки */
+.card:has(#backToCategoriesButton) .category {
+    margin-bottom: 17px;
+    font-size: 11px;
+    letter-spacing: 2.4px;
+    color: #9a9a9e;
+}
+
+/* Заголовок */
+.card:has(#backToCategoriesButton) > div[style*="font-size: 32px"] {
+    margin: 18px 0 14px !important;
+    font-size: 28px !important;
+    line-height: 1.25 !important;
+}
+
+/* Описание */
+.card:has(#backToCategoriesButton) > div[style*="font-size: 18px"] {
+    margin: 0 0 20px !important;
+    font-size: 15px !important;
+    line-height: 1.5 !important;
+    color: #999 !important;
+}
+
+/* Кнопка */
+.card:has(#backToCategoriesButton) #backToCategoriesButton {
+    display: block;
+    width: 100%;
+    margin: 0 !important;
+    padding: 13px 16px !important;
+    border: 1px solid #444 !important;
+    border-radius: 12px !important;
+    background: transparent !important;
+    color: #f4f4f7 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        transform 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.card:has(#backToCategoriesButton) #backToCategoriesButton:hover {
+    background: #202023 !important;
+    border-color: #666 !important;
+    transform: translateY(-1px);
+}
+
+.card:has(#backToCategoriesButton) #backToCategoriesButton:active {
+    transform: scale(0.98);
+}
+
+/* Мобильный экран */
+@media (max-width: 600px) {
+
+    .card:has(#backToCategoriesButton) {
+        margin-top: 18px;
+        padding: 24px 18px 20px;
+        border-radius: 20px;
+    }
+
+    .card:has(#backToCategoriesButton) .category {
+        margin-bottom: 15px;
+        font-size: 11px;
+    }
+
+    .card:has(#backToCategoriesButton) > div[style*="font-size: 32px"] {
+        margin: 15px 0 12px !important;
+        font-size: 25px !important;
+    }
+
+    .card:has(#backToCategoriesButton) > div[style*="font-size: 18px"] {
+        margin-bottom: 18px !important;
+        font-size: 14px !important;
+    }
+
+    .card:has(#backToCategoriesButton) #backToCategoriesButton {
+        padding: 13px 14px !important;
+    }
 }

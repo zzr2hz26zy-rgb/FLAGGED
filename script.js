@@ -886,8 +886,7 @@ async function showQuestionComposer() {
   const renderComposerFields = (type) => {
     const optionsBlock =
       type === "QUESTION"
-        ? ""
-        : `
+        ? `
           <div id="questionOptionsBlock" style="margin-top:18px;">
             <p style="margin-bottom:8px;">
               ${
@@ -918,7 +917,8 @@ async function showQuestionComposer() {
               )
               .join("")}
           </div>
-        `;
+        `
+        : "";
 
     const experienceBlock =
       type === "SITUATION"
@@ -1054,7 +1054,6 @@ async function showQuestionComposer() {
         "
       >
         <option value="SITUATION" ${type === "SITUATION" ? "selected" : ""}>SITUATION</option>
-        <option value="POLL" ${type === "POLL" ? "selected" : ""}>POLL</option>
         <option value="QUESTION" ${type === "QUESTION" ? "selected" : ""}>QUESTION</option>
       </select>
 
@@ -1254,8 +1253,36 @@ async function showQuestionComposer() {
         }
 
         const options =
-          selectedType === "QUESTION"
-            ? []
+          selectedType === "SITUATION"
+            ? [
+                {
+                  position: 1,
+                  text:
+                    language === "ru"
+                      ? "Нормально"
+                      : language === "pl"
+                      ? "Normalne"
+                      : "Normal"
+                },
+                {
+                  position: 2,
+                  text:
+                    language === "ru"
+                      ? "Сомнительно"
+                      : language === "pl"
+                      ? "Wątpliwe"
+                      : "Hmm"
+                },
+                {
+                  position: 3,
+                  text:
+                    language === "ru"
+                      ? "Красный флаг"
+                      : language === "pl"
+                      ? "Czerwona flaga"
+                      : "Red flag"
+                }
+              ]
             : [1, 2, 3, 4, 5]
                 .map(position => ({
                   position,
@@ -2241,12 +2268,6 @@ async function showModerationPanel() {
             : language === "pl"
             ? "Sytuacja"
             : "Situation"
-          : submission.type === "POLL"
-          ? language === "ru"
-            ? "Опрос"
-            : language === "pl"
-            ? "Ankieta"
-            : "Poll"
           : language === "ru"
           ? "Вопрос"
           : language === "pl"
@@ -2801,7 +2822,7 @@ function showSituation() {
             ? situation.options
                 .map(
                   option =>
-                    `<button class="poll-option" data-option-id="${option.id}">${option[language]}</button>`
+                    `<button class="answer-option" data-option-id="${option.id}">${option[language]}</button>`
                 )
                 .join("")
             : `
@@ -2975,7 +2996,7 @@ async function handleAnswer(button) {
 
     const questionId = situation.id;
 
-    // В новых SITUATION/POLL ответ выбирается через option_id.
+    // Ответ выбирается через option_id.
     const optionId = Number(button?.dataset?.optionId);
 
     if (!optionId) {
@@ -3069,14 +3090,12 @@ async function handleAnswer(button) {
     }
 
     // -----------------------------------------------------
-    // Для POLL личный опыт не используется.
-    // Для SITUATION сохраняем выбранный опыт.
+    // Личный опыт используется только для SITUATION.
+    // Для QUESTION значение всегда false.
     // -----------------------------------------------------
 
     const experienceValue =
-        situation.type === "POLL"
-            ? false
-            : (pendingPersonalExperience ?? false);
+        pendingPersonalExperience ?? false;
 
     try {
         const {
@@ -3223,7 +3242,7 @@ async function handleAnswer(button) {
             : 0;
 
         // -------------------------------------------------
-        // Универсальные результаты для POLL и SITUATION.
+        // Универсальные результаты для QUESTION и SITUATION.
         // -------------------------------------------------
 
         card.innerHTML = `
@@ -3239,7 +3258,7 @@ async function handleAnswer(button) {
             ${t().question}
           </p>
 
-          <div class="poll-results">
+          <div class="answer-results">
             ${situation.options
                 .map(option => {
                     const count = counts[option.id] || 0;
