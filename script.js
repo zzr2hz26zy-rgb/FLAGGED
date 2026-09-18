@@ -97,6 +97,68 @@ const translations = {
 let flaggedCategories = [];
 let situations = [];
 
+
+function mixQuestionsByType(items) {
+    const situationsItems = items
+        .filter(item => item.type === "SITUATION")
+        .sort(() => Math.random() - 0.5);
+
+    const questionItems = items
+        .filter(item => item.type === "QUESTION")
+        .sort(() => Math.random() - 0.5);
+
+    const mixed = [];
+    let lastType = null;
+    let lastTypeCount = 0;
+
+    while (situationsItems.length > 0 || questionItems.length > 0) {
+        const hasSituations = situationsItems.length > 0;
+        const hasQuestions = questionItems.length > 0;
+
+        let nextType;
+
+        if (
+            lastType &&
+            lastTypeCount >= 2 &&
+            hasSituations &&
+            hasQuestions
+        ) {
+            nextType = lastType === "SITUATION"
+                ? "QUESTION"
+                : "SITUATION";
+        } else if (hasSituations && hasQuestions) {
+            const situationWeight = situationsItems.length;
+            const questionWeight = questionItems.length;
+            const totalWeight = situationWeight + questionWeight;
+
+            nextType =
+                Math.random() * totalWeight < situationWeight
+                    ? "SITUATION"
+                    : "QUESTION";
+        } else if (hasSituations) {
+            nextType = "SITUATION";
+        } else {
+            nextType = "QUESTION";
+        }
+
+        const nextItem =
+            nextType === "SITUATION"
+                ? situationsItems.pop()
+                : questionItems.pop();
+
+        mixed.push(nextItem);
+
+        if (lastType === nextType) {
+            lastTypeCount++;
+        } else {
+            lastType = nextType;
+            lastTypeCount = 1;
+        }
+    }
+
+    return mixed;
+}
+
 async function loadQuestionsFromSupabase(categorySlug = "all") {
     const { data: categories, error: categoriesError } = await supabaseClient
         .from("categories")
@@ -161,8 +223,8 @@ async function loadQuestionsFromSupabase(categorySlug = "all") {
 
     situations = questions.map(question => ({
         id: question.id,
-  type: question.type,
-  hasPersonalExperience: question.has_personal_experience,
+        type: question.type,
+        hasPersonalExperience: question.has_personal_experience,
         category: categoryMap.get(question.category_id) || "other",
         text: {
             en: question.text_en,
@@ -184,6 +246,8 @@ async function loadQuestionsFromSupabase(categorySlug = "all") {
             red: 0
         }
     }));
+
+    situations = mixQuestionsByType(situations);
 
     console.log("Flagged: вопросы загружены из Supabase:", situations.length);
     return true;
