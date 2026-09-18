@@ -384,3 +384,1166 @@ h1 {
     background-color: #2d2d33 !important;
     color: #ffffff !important;
 }
+
+
+/* ============================================================
+   FLAGGED — compact main screen
+   ============================================================ */
+
+.app:has(#playButton) {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 18px 14px 24px;
+}
+
+.app:has(#playButton) .language-selector {
+    order: 0;
+    margin-bottom: 8px;
+}
+
+.app:has(#playButton) .logo {
+    order: 1;
+    font-size: 44px;
+    margin-bottom: 0;
+}
+
+.app:has(#playButton) h1 {
+    order: 2;
+    font-size: 38px;
+    letter-spacing: 4px;
+}
+
+.app:has(#playButton) .subtitle {
+    order: 3;
+    margin-top: 4px;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.app:has(#playButton) #createQuestionButton {
+    order: 4;
+}
+
+.app:has(#playButton) .card {
+    order: 5;
+    width: min(320px, 90%);
+    max-width: 320px;
+    margin: 10px auto 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.app:has(#playButton) .home-intro {
+    margin: 0 0 12px;
+    color: #999;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.app:has(#playButton) #playButton {
+    width: 100%;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #000000;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.app:has(#playButton) #playButton:hover {
+    transform: translateY(-1px);
+    background: #eeeeee;
+}
+
+.app:has(#playButton) #authButton,
+.app:has(#playButton) #registerButton,
+.app:has(#playButton) #profileButton,
+.app:has(#playButton) #logoutButton {
+    width: min(320px, 90%);
+    margin: 8px auto 0;
+}
+
+.app:has(#playButton) #authButton {
+    order: 6;
+}
+
+.app:has(#playButton) #registerButton {
+    order: 7;
+    padding: 8px 20px;
+    border: none;
+    background: transparent;
+    color: #888;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.app:has(#playButton) #registerButton:hover {
+    background: transparent;
+    color: #ffffff;
+}
+
+.app:has(#playButton) #profileButton {
+    order: 6;
+}
+
+.app:has(#playButton) #logoutButton {
+    order: 7;
+}
+
+.app:has(#playButton) #moderationButton {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 20;
+    width: auto;
+    min-width: 96px;
+    height: 32px;
+    padding: 0 10px;
+    margin: 0;
+    border: 1px solid #333;
+    border-radius: 9px;
+    background: #18181a;
+    color: #888;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.app:has(#playButton) #moderationButton:hover {
+    background: #242427;
+    color: #ffffff;
+}
+
+.app:has(#playButton) .hint {
+    order: 30;
+    margin-top: 12px;
+}
+
+@media (max-width: 600px) {
+    .app:has(#playButton) {
+        padding: 16px 12px 20px;
+    }
+
+    .app:has(#playButton) .logo {
+        font-size: 42px;
+    }
+
+    .app:has(#playButton) h1 {
+        font-size: 36px;
+    }
+}
+
+
+/* ============================================================
+   FLAGGED — language button + refined main screen spacing
+   ============================================================ */
+
+.app:has(#playButton) .language-selector {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 30;
+    margin: 0;
+}
+
+.app:has(#playButton) .language-toggle {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid #333;
+    border-radius: 10px;
+    background: #18181a;
+    color: #ffffff;
+    font-size: 18px;
+    line-height: 36px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.app:has(#playButton) .language-menu {
+    display: none;
+    position: absolute;
+    top: 42px;
+    left: 0;
+    min-width: 140px;
+    padding: 5px;
+    border: 1px solid #333;
+    border-radius: 12px;
+    background: #18181a;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.app:has(#playButton) .language-menu.open {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.app:has(#playButton) .language-menu button {
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #f4f4f7;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.app:has(#playButton) .language-menu button:hover {
+    background: #29292c;
+}
+
+.app:has(#playButton) .language-menu button span {
+    margin-left: 4px;
+}
+
+/* верх */
+.app:has(#playButton) {
+    padding-top: 58px;
+}
+
+/* логотип */
+.app:has(#playButton) .logo {
+    margin-bottom: 0;
+}
+
+/* название */
+.app:has(#playButton) h1 {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+/* подзаголовок */
+.app:has(#playButton) .subtitle {
+    margin-top: 4px;
+    margin-bottom: 15px;
+}
+
+/* Задать вопрос */
+.app:has(#playButton) #createQuestionButton {
+    margin-top: 0;
+}
+
+/* блок описания */
+.app:has(#playButton) .card {
+    margin-top: 12px;
+}
+
+/* текст описания */
+.app:has(#playButton) .home-intro {
+    margin-top: 0;
+    margin-bottom: 13px;
+}
+
+/* Играть */
+.app:has(#playButton) #playButton {
+    margin-top: 0;
+}
+
+/* авторизация */
+.app:has(#playButton) #authButton,
+.app:has(#playButton) #profileButton,
+.app:has(#playButton) #logoutButton {
+    margin-top: 8px;
+}
+
+/* Модерация */
+.app:has(#playButton) #moderationButton {
+    top: 14px;
+    right: 14px;
+}
+
+@media (max-width: 600px) {
+    .app:has(#playButton) {
+        padding-top: 54px;
+    }
+}
+
+/* ============================================================
+   Main screen corner arrangement
+   ============================================================ */
+
+/* Язык — правый верхний угол */
+.app:has(#playButton) .language-selector {
+    left: auto;
+    right: 14px;
+    top: 14px;
+}
+
+/* Модерация — внизу, после основного содержимого */
+.app:has(#playButton) #moderationButton {
+    position: static;
+    order: 40;
+    align-self: flex-end;
+    width: auto;
+    min-width: 96px;
+    height: 32px;
+    padding: 0 10px;
+    margin: 8px 0 0;
+    border: 1px solid #333;
+    border-radius: 9px;
+    background: #18181a;
+    color: #777;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 30px;
+}
+
+.app:has(#playButton) #moderationButton:hover {
+    background: #242427;
+    color: #ffffff;
+}
+
+
+/* Language menu opens inward from the right corner */
+.app:has(#playButton) .language-menu {
+    left: auto;
+    right: 0;
+}
+
+
+/* ============================================================
+   FLAGGED — final main screen spacing adjustment
+   Visual only
+   ============================================================ */
+
+.app:has(#playButton) {
+    padding-top: 42px;
+    padding-bottom: 18px;
+}
+
+/* Верхний блок */
+.app:has(#playButton) .logo {
+    margin-bottom: -2px;
+}
+
+.app:has(#playButton) h1 {
+    margin-bottom: 0;
+}
+
+.app:has(#playButton) .subtitle {
+    margin-top: 2px;
+    margin-bottom: 10px;
+}
+
+/* Задать вопрос */
+.app:has(#playButton) #createQuestionButton {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+/* Карточка главного экрана */
+.app:has(#playButton) .card {
+    margin-top: 7px;
+}
+
+/* Описание */
+.app:has(#playButton) .home-intro {
+    margin-top: 0;
+    margin-bottom: 8px;
+    line-height: 1.35;
+}
+
+/* Играть */
+.app:has(#playButton) #playButton {
+    margin-top: 0;
+}
+
+/* Войти / Профиль / Выйти */
+.app:has(#playButton) #authButton,
+.app:has(#playButton) #registerButton,
+.app:has(#playButton) #profileButton,
+.app:has(#playButton) #logoutButton {
+    margin-top: 6px;
+}
+
+/* Нижняя подпись */
+.app:has(#playButton) .hint {
+    margin-top: 9px;
+}
+
+/* Модерация */
+.app:has(#playButton) #moderationButton {
+    margin-top: 5px;
+}
+
+/* На телефоне ещё немного компактнее */
+@media (max-width: 600px) {
+    .app:has(#playButton) {
+        padding-top: 40px;
+        padding-bottom: 16px;
+    }
+
+    .app:has(#playButton) .logo {
+        font-size: 40px;
+    }
+
+    .app:has(#playButton) h1 {
+        font-size: 35px;
+    }
+
+    .app:has(#playButton) .subtitle {
+        margin-top: 1px;
+        margin-bottom: 8px;
+    }
+
+    .app:has(#playButton) .card {
+        margin-top: 6px;
+    }
+
+    .app:has(#playButton) .home-intro {
+        margin-bottom: 7px;
+    }
+}
+
+/* ============================================================
+   FLAGGED — tighter main screen spacing
+   Visual only
+   ============================================================ */
+
+.app:has(#playButton) {
+    padding-top: 28px;
+    padding-bottom: 12px;
+}
+
+.app:has(#playButton) .logo {
+    font-size: 38px;
+    margin-bottom: -3px;
+}
+
+.app:has(#playButton) h1 {
+    font-size: 34px;
+    letter-spacing: 3px;
+    margin: 0;
+}
+
+.app:has(#playButton) .subtitle {
+    margin-top: 3px;
+    margin-bottom: 6px;
+    font-size: 15px;
+}
+
+.app:has(#playButton) #createQuestionButton {
+    margin-top: 0;
+}
+
+.app:has(#playButton) .card {
+    margin-top: 5px;
+}
+
+.app:has(#playButton) .home-intro {
+    margin: 0 0 6px;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.app:has(#playButton) #playButton {
+    padding: 13px 20px;
+}
+
+.app:has(#playButton) #authButton,
+.app:has(#playButton) #registerButton,
+.app:has(#playButton) #profileButton,
+.app:has(#playButton) #logoutButton {
+    margin-top: 4px;
+}
+
+.app:has(#playButton) .hint {
+    margin-top: 6px;
+}
+
+.app:has(#playButton) #moderationButton {
+    margin-top: 4px;
+}
+
+@media (max-width: 600px) {
+    .app:has(#playButton) {
+        padding-top: 28px;
+        padding-bottom: 12px;
+    }
+
+    .app:has(#playButton) .logo {
+        font-size: 38px;
+    }
+
+    .app:has(#playButton) h1 {
+        font-size: 34px;
+    }
+
+    .app:has(#playButton) .subtitle {
+        margin-top: 2px;
+        margin-bottom: 6px;
+    }
+}
+
+
+/* ============================================================
+   FLAGGED — final compact first-screen layout
+   Visual only. No logic changes.
+   ============================================================ */
+
+.app:has(#playButton) {
+    padding-top: 28px;
+    padding-bottom: 12px;
+}
+
+/* Карточка становится прозрачным контейнером,
+   а её содержимое участвует в общей раскладке */
+.app:has(#playButton) .card {
+    display: contents;
+}
+
+/* Описание */
+.app:has(#playButton) .home-intro {
+    order: 3;
+    width: min(320px, 90%);
+    margin: 6px auto 8px;
+    color: #999;
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+/* Задать вопрос */
+.app:has(#playButton) #createQuestionButton {
+    order: 4;
+    width: min(320px, 90%);
+    margin: 0 auto;
+    padding: 13px 20px;
+}
+
+/* Играть */
+.app:has(#playButton) #playButton {
+    order: 5;
+    width: min(320px, 90%);
+    margin: 6px auto 0;
+    padding: 13px 20px;
+}
+
+/* Войти */
+.app:has(#playButton) #authButton {
+    order: 6;
+    width: min(320px, 90%);
+    margin: 6px auto 0;
+}
+
+/* Регистрация */
+.app:has(#playButton) #registerButton {
+    order: 7;
+    width: min(320px, 90%);
+    margin: 2px auto 0;
+    padding: 7px 20px;
+}
+
+/* Профиль */
+.app:has(#playButton) #profileButton {
+    order: 6;
+    width: min(320px, 90%);
+    margin: 6px auto 0;
+}
+
+/* Выйти */
+.app:has(#playButton) #logoutButton {
+    order: 7;
+    width: min(320px, 90%);
+    margin: 4px auto 0;
+}
+
+/* Название */
+.app:has(#playButton) .logo {
+    order: 1;
+    font-size: 38px;
+    margin: 0 0 -2px;
+}
+
+.app:has(#playButton) h1 {
+    order: 2;
+    font-size: 34px;
+    letter-spacing: 3px;
+    margin: 0;
+}
+
+/* Подзаголовок */
+.app:has(#playButton) .subtitle {
+    order: 2;
+    margin: 2px 0 0;
+    font-size: 15px;
+}
+
+/* Нижняя подпись */
+.app:has(#playButton) .hint {
+    order: 30;
+    margin-top: 8px;
+}
+
+/* Модерация */
+.app:has(#playButton) #moderationButton {
+    order: 40;
+    position: static;
+    align-self: flex-end;
+    width: auto;
+    min-width: 96px;
+    height: 30px;
+    margin: 5px 0 0;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    line-height: 28px;
+}
+
+/* Язык */
+.app:has(#playButton) .language-selector {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    left: auto;
+}
+
+/* Мобильный экран */
+@media (max-width: 600px) {
+    .app:has(#playButton) {
+        padding-top: 25px;
+        padding-bottom: 10px;
+    }
+
+    .app:has(#playButton) .logo {
+        font-size: 36px;
+    }
+
+    .app:has(#playButton) h1 {
+        font-size: 33px;
+    }
+
+    .app:has(#playButton) .subtitle {
+        font-size: 15px;
+        margin-top: 1px;
+    }
+
+    .app:has(#playButton) .home-intro {
+        margin-top: 5px;
+        margin-bottom: 7px;
+    }
+}
+
+
+/* ============================================================
+   Stable auth area on the first screen
+   Visual only — prevents layout jump after auth check
+   ============================================================ */
+
+#authArea {
+    display: contents;
+}
+
+.app:has(#playButton) #authArea {
+    order: 6;
+    width: min(320px, 90%);
+    min-height: 92px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+}
+
+.app:has(#playButton) #authArea #authButton,
+.app:has(#playButton) #authArea #registerButton,
+.app:has(#playButton) #authArea #profileButton,
+.app:has(#playButton) #authArea #logoutButton {
+    width: 100%;
+    margin: 4px 0 0;
+}
+
+.app:has(#playButton) #authArea #registerButton {
+    padding: 8px 20px;
+}
+
+@media (max-width: 600px) {
+    .app:has(#playButton) #authArea {
+        min-height: 90px;
+    }
+}
+
+
+/* ============================================================
+   FLAGGED — main screen visual polish
+   Visual only
+   ============================================================ */
+
+@media (max-width: 600px) {
+
+    .app:has(#playButton) {
+        padding-top: 32px;
+        padding-bottom: 14px;
+    }
+
+    /* Флаг */
+    .app:has(#playButton) .logo {
+        font-size: 43px;
+        margin-bottom: -1px;
+    }
+
+    /* FLAGGED */
+    .app:has(#playButton) h1 {
+        font-size: 37px;
+        letter-spacing: 3.5px;
+        margin: 0;
+    }
+
+    /* Красный флаг или нет? */
+    .app:has(#playButton) .subtitle {
+        margin-top: 3px;
+        margin-bottom: 13px;
+        font-size: 16px;
+    }
+
+    /* Описание */
+    .app:has(#playButton) .home-intro {
+        width: min(330px, 92%);
+        margin: 0 auto 13px;
+        color: #999;
+        font-size: 14px;
+        line-height: 1.45;
+    }
+
+    /* Главные кнопки */
+    .app:has(#playButton) #createQuestionButton,
+    .app:has(#playButton) #playButton {
+        width: min(320px, 90%);
+    }
+
+    .app:has(#playButton) #createQuestionButton {
+        padding: 14px 20px;
+        margin: 0 auto;
+    }
+
+    .app:has(#playButton) #playButton {
+        padding: 14px 20px;
+        margin: 9px auto 0;
+    }
+
+    /* Авторизация */
+    .app:has(#playButton) #authArea {
+        min-height: 86px;
+        margin-top: 8px;
+    }
+
+    .app:has(#playButton) #authArea #authButton,
+    .app:has(#playButton) #authArea #profileButton {
+        margin-top: 0;
+    }
+
+    .app:has(#playButton) #authArea #registerButton,
+    .app:has(#playButton) #authArea #logoutButton {
+        margin-top: 5px;
+    }
+
+    /* Нижняя подпись */
+    .app:has(#playButton) .hint {
+        margin-top: 11px;
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    /* Модерация */
+    .app:has(#playButton) #moderationButton {
+        margin-top: 7px;
+    }
+
+    /* Язык */
+    .app:has(#playButton) .language-toggle {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+}
+
+
+/* ============================================================
+   Final main screen vertical position
+   Visual only
+   ============================================================ */
+
+@media (max-width: 600px) {
+
+    .app:has(#playButton) {
+        padding-top: 48px;
+    }
+
+    /* Языковой флаг остаётся в самом верхнем углу */
+    .app:has(#playButton) .language-selector {
+        top: 14px;
+        right: 14px;
+    }
+
+    /* Главный контент опускаем ниже */
+    .app:has(#playButton) .logo {
+        margin-top: 0;
+    }
+
+    /* Сохраняем компактный блок регистрации */
+    .app:has(#playButton) #registerButton {
+        margin-top: 3px;
+        padding: 7px 20px;
+        font-size: 14px;
+    }
+}
+
+
+/* ============================================================
+   Main screen — final visual spacing
+   ============================================================ */
+
+/* Намного больше воздуха между языком и логотипом */
+@media (max-width: 600px) {
+    .app:has(#playButton) {
+        padding-top: 70px;
+    }
+
+    /* Создать аккаунт — полноценная, но вторичная кнопка */
+    .app:has(#playButton) #authArea #registerButton {
+        display: block;
+        width: 100%;
+        min-height: 42px;
+        padding: 10px 20px;
+        margin-top: 6px;
+        border: 1px solid #444;
+        border-radius: 12px;
+        background: transparent;
+        color: #d0d0d0;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    }
+
+    .app:has(#playButton) #authArea #registerButton:hover {
+        background: #19191b;
+        color: #ffffff;
+        transform: translateY(-1px);
+    }
+
+    .app:has(#playButton) #authArea #registerButton:active {
+        transform: scale(0.98);
+    }
+}
+
+
+/* ============================================================
+   Move the whole main content block down
+   Language selector stays fixed in the corner
+   ============================================================ */
+
+@media (max-width: 600px) {
+
+    .app:has(#playButton) .logo,
+    .app:has(#playButton) h1,
+    .app:has(#playButton) .subtitle,
+    .app:has(#playButton) #createQuestionButton,
+    .app:has(#playButton) .card,
+    .app:has(#playButton) #authArea,
+    .app:has(#playButton) .hint {
+        position: relative;
+        top: 22px;
+    }
+
+    /* отменяем старые индивидуальные сдвиги */
+    .app:has(#playButton) .logo {
+        transform: none;
+        margin-top: 0;
+    }
+
+    .app:has(#playButton) h1,
+    .app:has(#playButton) .subtitle,
+    .app:has(#playButton) .home-intro {
+        transform: none;
+    }
+
+}
+
+
+/* ============================================================
+   Fix: move the whole main content down without overlapping
+   ============================================================ */
+
+@media (max-width: 600px) {
+
+    /* Весь центральный блок опускаем целиком */
+    .app:has(#playButton) {
+        padding-top: 70px;
+    }
+
+    /* Убираем предыдущий неправильный relative-сдвиг */
+    .app:has(#playButton) .logo,
+    .app:has(#playButton) h1,
+    .app:has(#playButton) .subtitle,
+    .app:has(#playButton) #createQuestionButton,
+    .app:has(#playButton) .card,
+    .app:has(#playButton) #authArea,
+    .app:has(#playButton) .hint {
+        position: static;
+        top: auto;
+        transform: none;
+    }
+
+    /* Язык остаётся абсолютно в правом верхнем углу */
+    .app:has(#playButton) .language-selector {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+    }
+
+}
+
+
+/* ============================================================
+   FLAGGED — subtle waving flag animation
+   Visual only
+   ============================================================ */
+
+@keyframes flagged-flag-wave {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    20% {
+        transform: rotate(-3deg);
+    }
+
+    50% {
+        transform: rotate(4deg);
+    }
+
+    80% {
+        transform: rotate(-2deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+@media (max-width: 600px) {
+    .app:has(#playButton) .logo {
+        animation: flagged-flag-wave 2.8s ease-in-out infinite;
+        transform-origin: 50% 90%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app:has(#playButton) .logo {
+        animation: none;
+    }
+}
+
+
+/* ============================================================
+   FLAGGED — realistic waving cloth
+   Pole stays still, only the flag fabric moves
+   ============================================================ */
+
+.flag-animation {
+    width: 44px;
+    height: 52px;
+    display: inline-block;
+    overflow: visible;
+}
+
+.flag-pole {
+    stroke: #cfcfcf;
+    stroke-width: 3.5;
+    stroke-linecap: round;
+}
+
+.flag-cloth {
+    fill: #ff2b2b;
+    transform-box: fill-box;
+    transform-origin: left center;
+    animation: flagged-cloth-wave 1.8s ease-in-out infinite;
+}
+
+@keyframes flagged-cloth-wave {
+
+    0% {
+        transform: skewY(0deg) scaleX(1);
+    }
+
+    25% {
+        transform: skewY(3deg) scaleX(0.96);
+    }
+
+    50% {
+        transform: skewY(-2deg) scaleX(1.03);
+    }
+
+    75% {
+        transform: skewY(2.5deg) scaleX(0.97);
+    }
+
+    100% {
+        transform: skewY(0deg) scaleX(1);
+    }
+}
+
+/* Отключаем старое покачивание всего логотипа */
+.app:has(#playButton) .logo {
+    animation: none;
+    transform-origin: initial;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .flag-cloth {
+        animation: none;
+    }
+}
+
+
+/* Real cloth animation: pole stays still */
+.flag-animation {
+    width: 46px;
+    height: 58px;
+    display: inline-block;
+    overflow: visible;
+}
+
+.flag-cloth {
+    fill: #ff2b2b;
+    animation: none !important;
+    transform: none !important;
+}
+
+
+/* Более естественная ширина развевающейся ткани */
+.flag-animation {
+    width: 50px;
+    height: 60px;
+}
+
+
+/* Natural waving flag */
+.flag-animation {
+    width: 52px;
+    height: 64px;
+    display: inline-block;
+    overflow: visible;
+}
+
+.flag-pole {
+    stroke: #cfcfcf;
+    stroke-width: 3.2;
+    stroke-linecap: round;
+}
+
+.flag-cloth {
+    fill: #ff2b2b;
+    animation: none !important;
+    transform: none !important;
+}
+
+
+/* Natural waving flag */
+.flag-animation {
+    width: 52px;
+    height: 64px;
+    display: inline-block;
+    overflow: visible;
+}
+
+.flag-pole {
+    stroke: #cfcfcf;
+    stroke-width: 3.2;
+    stroke-linecap: round;
+}
+
+.flag-cloth {
+    fill: #ff2b2b;
+    animation: none !important;
+    transform: none !important;
+}
+
+/* Final triangular flag shape */
+.flag-animation {
+    width: 52px;
+    height: 64px;
+    display: inline-block;
+    overflow: visible;
+}
+
+.flag-pole {
+    stroke: #cfcfcf;
+    stroke-width: 3.2;
+    stroke-linecap: round;
+}
+
+.flag-cloth {
+    fill: #ff2b2b;
+    transform: none !important;
+    animation: none !important;
+    transform-origin: initial;
+}
+
+/* ============================================================
+   Equilateral triangular flag
+   Pole stays completely still
+   Cloth keeps clean, smooth edges
+   ============================================================ */
+
+.flag-animation {
+    width: 52px;
+    height: 64px;
+    display: inline-block;
+    overflow: visible;
+}
+
+.flag-pole {
+    stroke: #cfcfcf;
+    stroke-width: 3.2;
+    stroke-linecap: round;
+}
+
+.flag-cloth {
+    fill: #ff2b2b;
+    animation: none !important;
+    transform: none !important;
+    transform-origin: initial;
+}
+
+/* Flag based on the reference: smooth fabric, fixed pole */
+.flag-animation {
+    width: 58px;
+    height: 62px;
+    display: inline-block;
+    overflow: visible;
+}
+
+.flag-pole {
+    stroke: #cfcfcf;
+    stroke-width: 3.2;
+    stroke-linecap: round;
+}
+
+.flag-cloth {
+    fill: #ff2b2b;
+    animation: none !important;
+    transform: none !important;
+}
+
+.flag-animation {
+    width: 56px;
+    height: 66px;
+}
+
+.flag-cloth {
+    fill: #ff2b2b;
+    animation: none !important;
+    transform: none !important;
+}

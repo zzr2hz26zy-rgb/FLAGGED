@@ -19,17 +19,23 @@
       Задать вопрос
     </button>
 
-    <button id="authButton" type="button">
-      Войти
-    </button>
+    <div id="authArea">
+      <button id="authButton" type="button">
+        Войти
+      </button>
 
-    <button id="profileButton" type="button" style="display:none;">
-      Профиль
-    </button>
+      <button id="registerButton" type="button" style="display:none;">
+        Создать аккаунт
+      </button>
 
-    <button id="logoutButton" type="button" style="display:none;">
-      Выйти
-    </button>
+      <button id="profileButton" type="button" style="display:none;">
+        Профиль
+      </button>
+
+      <button id="logoutButton" type="button" style="display:none;">
+        Выйти
+      </button>
+    </div>
 
     <button
       id="moderationButton"
@@ -39,7 +45,13 @@
       Модерация
     </button>
 
-        <section class="card"></section>
+        <section class="card">
+            <span
+                id="playButton"
+                aria-hidden="true"
+                style="display:none;"
+            ></span>
+        </section>
 
         <p class="hint">You decide. We show what others think.</p>
     </main>

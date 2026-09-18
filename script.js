@@ -226,20 +226,52 @@ function createLanguageSelector() {
         oldSelector.remove();
     }
 
-    const selector = document.createElement("div");
+    const currentFlag = {
+        en: "🇬🇧",
+        ru: "🇷🇺",
+        pl: "🇵🇱"
+    }[language] || "🇬🇧";
 
+    const selector = document.createElement("div");
     selector.className = "language-selector";
 
     selector.innerHTML = `
-        <span>${t().language}:</span>
-        <button data-lang="en">🇬🇧</button>
-        <button data-lang="ru">🇷🇺</button>
-        <button data-lang="pl">🇵🇱</button>
+        <button
+            type="button"
+            class="language-toggle"
+            aria-label="${t().language}"
+            aria-expanded="false"
+            title="${t().language}"
+        >
+            ${currentFlag}
+        </button>
+
+        <div class="language-menu">
+            <button type="button" data-lang="en">
+                🇬🇧 <span>English</span>
+            </button>
+
+            <button type="button" data-lang="ru">
+                🇷🇺 <span>Русский</span>
+            </button>
+
+            <button type="button" data-lang="pl">
+                🇵🇱 <span>Polski</span>
+            </button>
+        </div>
     `;
 
     app.prepend(selector);
 
-    selector.querySelectorAll("button").forEach(button => {
+    const toggle = selector.querySelector(".language-toggle");
+    const menu = selector.querySelector(".language-menu");
+
+    toggle.addEventListener("click", () => {
+        const isOpen = menu.classList.toggle("open");
+        toggle.setAttribute("aria-expanded", String(isOpen));
+    });
+
+    selector.querySelectorAll(".language-menu button").forEach(button => {
         button.addEventListener("click", async () => {
             language = button.dataset.lang;
             localStorage.setItem("flaggedLanguage", language);
@@ -289,7 +321,64 @@ function updateHeader() {
     }
 
     if (logo) {
-        logo.textContent = "🚩";
+        logo.innerHTML = `
+            <svg
+                class="flag-animation"
+                viewBox="0 0 120 120"
+                aria-label="FLAGGED"
+                role="img"
+            >
+                <line
+                    class="flag-pole"
+                    x1="30"
+                    y1="12"
+                    x2="30"
+                    y2="108"
+                />
+
+                <path
+                    class="flag-cloth"
+                    d="M30 18
+                       L96 49
+                       L30 80
+                       Z"
+                >
+                    <animate
+                        attributeName="d"
+                        dur="2.8s"
+                        repeatCount="indefinite"
+                        calcMode="spline"
+                        keyTimes="0;0.25;0.5;0.75;1"
+                        keySplines="
+                            0.42 0 0.58 1;
+                            0.42 0 0.58 1;
+                            0.42 0 0.58 1;
+                            0.42 0 0.58 1
+                        "
+                        values="
+                            M30 18 L96 49 L30 80 Z;
+
+                            M30 18
+                            C48 17, 70 28, 96 39
+                            C82 47, 68 61, 30 80
+                            Z;
+
+                            M30 18
+                            C49 13, 72 24, 99 48
+                            C79 57, 63 68, 30 80
+                            Z;
+
+                            M30 18
+                            C48 17, 70 28, 96 39
+                            C82 47, 68 61, 30 80
+                            Z;
+
+                            M30 18 L96 49 L30 80 Z
+                        "
+                    />
+                </path>
+            </svg>
+        `;
     }
 }
 
@@ -298,6 +387,7 @@ async function setHeaderActionsVisible(visible) {
     const actionIds = [
         "createQuestionButton",
         "authButton",
+        "registerButton",
         "profileButton",
         "logoutButton",
         "moderationButton"
@@ -375,43 +465,11 @@ async function showStartScreen() {
     }
 
     card.innerHTML = `
-        <div style="
-            font-size:42px;
-            margin-bottom:20px;
-        ">
-            🚩
-        </div>
-
-        <h2 style="
-            font-size:28px;
-            margin-bottom:18px;
-        ">
-            ${t().title}
-        </h2>
-
-        <p style="
-            color:#999;
-            font-size:17px;
-            line-height:1.6;
-            margin-bottom:30px;
-        ">
+        <p class="home-intro">
             ${startTexts[language].intro}
         </p>
 
-        <button id="playButton"
-            type="button"
-            style="
-                width:100%;
-                padding:17px;
-                border:none;
-                border-radius:15px;
-                background:white;
-                color:black;
-                font-size:16px;
-                font-weight:bold;
-                cursor:pointer;
-            "
-        >
+        <button id="playButton" type="button">
             ${startTexts[language].play}
         </button>
     `;
@@ -1896,10 +1954,11 @@ async function showAuthComposer() {
 
 async function updateAuthButtons() {
   const authButton = document.getElementById("authButton");
+  const registerButton = document.getElementById("registerButton");
   const profileButton = document.getElementById("profileButton");
   const logoutButton = document.getElementById("logoutButton");
 
-  if (!authButton || !profileButton || !logoutButton) return;
+  if (!authButton || !registerButton || !profileButton || !logoutButton) return;
 
   const {
     data: { user }
@@ -1907,6 +1966,7 @@ async function updateAuthButtons() {
 
   if (user) {
     authButton.style.display = "none";
+    registerButton.style.display = "none";
     profileButton.style.display = "block";
     logoutButton.style.display = "block";
 
@@ -1925,6 +1985,7 @@ async function updateAuthButtons() {
         : "Sign out";
   } else {
     authButton.style.display = "block";
+    registerButton.style.display = "block";
     profileButton.style.display = "none";
     logoutButton.style.display = "none";
 
@@ -1934,12 +1995,23 @@ async function updateAuthButtons() {
         : language === "pl"
         ? "Zaloguj się"
         : "Sign in";
+
+    registerButton.textContent =
+      language === "ru"
+        ? "Создать аккаунт"
+        : language === "pl"
+        ? "Utwórz konto"
+        : "Create account";
   }
 }
 
 document
   .getElementById("authButton")
   ?.addEventListener("click", showAuthComposer);
+
+document
+  .getElementById("registerButton")
+  ?.addEventListener("click", () => showAuthComposer("signup"));
 
 document
   .getElementById("profileButton")
