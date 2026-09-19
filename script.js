@@ -1973,7 +1973,7 @@ async function showProfileDashboard() {
         supabaseClient
             .from("question_submissions")
             .select(
-                "id, text_ru, text_en, text_pl, type, moderation_status, created_at, is_anonymous, has_personal_experience"
+                "id, text_ru, text_en, text_pl, type, moderation_status, moderator_note, created_at, is_anonymous, has_personal_experience"
             )
             .eq("created_by", user.id)
             .order("created_at", { ascending: false }),
@@ -2257,6 +2257,38 @@ async function showProfileDashboard() {
                                     )}
                                 </span>
                             </div>
+
+                            ${
+                                submission.moderation_status === "REJECTED" &&
+                                submission.moderator_note
+                                    ? `
+                                        <div style="
+                                            margin-top:10px;
+                                            padding:10px 12px;
+                                            border:1px solid #444;
+                                            border-radius:10px;
+                                            color:#ddd;
+                                            font-size:13px;
+                                            line-height:1.45;
+                                        ">
+                                            <strong>
+                                                ${
+                                                    language === "ru"
+                                                        ? "Причина отклонения:"
+                                                        : language === "pl"
+                                                        ? "Powód odrzucenia:"
+                                                        : "Rejection reason:"
+                                                }
+                                            </strong>
+                                            <div style="margin-top:5px;">
+                                                ${escapeProfileHtml(
+                                                    submission.moderator_note
+                                                )}
+                                            </div>
+                                        </div>
+                                    `
+                                    : ""
+                            }
                         </div>
                     `;
                 })
