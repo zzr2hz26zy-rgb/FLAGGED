@@ -1512,12 +1512,54 @@ document
 
 
 async function showProfileSetup(fromSettings = false) {
+    const {
+        data: { user },
+        error: userError
+    } = await supabaseClient.auth.getUser();
+
+    if (userError || !user) {
+        alert(
+            language === "ru"
+                ? "Не удалось определить пользователя."
+                : language === "pl"
+                ? "Nie udało się ustalić użytkownika."
+                : "Could not identify the user."
+        );
+        return;
+    }
+
+    const { data: profile, error: profileError } = await supabaseClient
+        .from("profiles")
+        .select("display_name, username, is_anonymous")
+        .eq("id", user.id)
+        .maybeSingle();
+
+    if (profileError) {
+        console.error(
+            "Flagged: ошибка загрузки профиля:",
+            profileError
+        );
+    }
+
+    const currentDisplayName =
+        profile?.display_name?.trim() ||
+        profile?.username?.trim() ||
+        "";
+
+    const currentAnonymous = profile?.is_anonymous === true;
+
     card.innerHTML = `
         <div class="category">FLAGGED</div>
 
         <h2 style="text-align:center;">
             ${
-                language === "ru"
+                fromSettings
+                    ? language === "ru"
+                        ? "Настройки профиля"
+                        : language === "pl"
+                        ? "Ustawienia profilu"
+                        : "Profile settings"
+                    : language === "ru"
                     ? "Настрой профиль"
                     : language === "pl"
                     ? "Ustaw swój profil"
@@ -1533,10 +1575,10 @@ async function showProfileSetup(fromSettings = false) {
         ">
             ${
                 language === "ru"
-                    ? "Как вас показывать другим пользователям?"
+                    ? "Как вы будете отображаться другим пользователям"
                     : language === "pl"
-                    ? "Jak chcesz być wyświetlany innym użytkownikom?"
-                    : "How should other users see you?"
+                    ? "Jak będziesz wyświetlany innym użytkownikom"
+                    : "How other users will see you"
             }
         </p>
 
@@ -1545,6 +1587,7 @@ async function showProfileSetup(fromSettings = false) {
             type="text"
             maxlength="40"
             autocomplete="nickname"
+            value="${String(currentDisplayName).replace(/"/g, "&quot;")}"
             placeholder="${
                 language === "ru"
                     ? "Имя или псевдоним"
@@ -1564,12 +1607,53 @@ async function showProfileSetup(fromSettings = false) {
             "
         >
 
+        <label style="
+            display:flex;
+            align-items:flex-start;
+            gap:10px;
+            margin-top:16px;
+            color:#ddd;
+            line-height:1.45;
+            cursor:pointer;
+        ">
+            <input
+                id="profileAnonymous"
+                type="checkbox"
+                ${currentAnonymous ? "checked" : ""}
+                style="margin-top:3px;"
+            >
+            <span>
+                ${
+                    language === "ru"
+                        ? "Использовать анонимность по умолчанию"
+                        : language === "pl"
+                        ? "Domyślnie korzystaj z anonimowości"
+                        : "Use anonymity by default"
+                }
+            </span>
+        </label>
+
+        <p style="
+            color:#777;
+            font-size:13px;
+            line-height:1.5;
+            margin-top:8px;
+        ">
+            ${
+                language === "ru"
+                    ? "Это настройка профиля. Она будет использоваться в новых публикациях и комментариях после подключения этой настройки к соответствующим формам."
+                    : language === "pl"
+                    ? "To ustawienie profilu. Będzie używane w nowych publikacjach i komentarzach po podłączeniu tej opcji do odpowiednich formularzy."
+                    : "This is a profile setting. It will be used for new posts and comments after this option is connected to the corresponding forms."
+            }
+        </p>
+
         <button
             id="saveProfileButton"
             type="button"
             style="
                 width:100%;
-                margin-top:14px;
+                margin-top:18px;
                 padding:14px;
                 border:none;
                 border-radius:10px;
@@ -1587,6 +1671,35 @@ async function showProfileSetup(fromSettings = false) {
                     : "Save"
             }
         </button>
+
+        ${
+            fromSettings
+                ? `
+                    <button
+                        id="backToProfileButton"
+                        type="button"
+                        style="
+                            width:100%;
+                            margin-top:8px;
+                            padding:12px;
+                            border:1px solid #444;
+                            border-radius:10px;
+                            background:transparent;
+                            color:#fff;
+                            cursor:pointer;
+                        "
+                    >
+                        ${
+                            language === "ru"
+                                ? "Назад в профиль"
+                                : language === "pl"
+                                ? "Wróć do profilu"
+                                : "Back to profile"
+                        }
+                    </button>
+                `
+                : ""
+        }
     `;
 
     document
@@ -1594,6 +1707,8 @@ async function showProfileSetup(fromSettings = false) {
         ?.addEventListener("click", async () => {
             const input = document.getElementById("profileDisplayName");
             const displayName = input?.value.trim();
+            const anonymous =
+                document.getElementById("profileAnonymous")?.checked === true;
 
             if (!displayName) {
                 alert(
@@ -1602,22 +1717,6 @@ async function showProfileSetup(fromSettings = false) {
                         : language === "pl"
                         ? "Wpisz imię lub pseudonim."
                         : "Enter a name or nickname."
-                );
-                return;
-            }
-
-            const {
-                data: { user },
-                error: userError
-            } = await supabaseClient.auth.getUser();
-
-            if (userError || !user) {
-                alert(
-                    language === "ru"
-                        ? "Не удалось определить пользователя."
-                        : language === "pl"
-                        ? "Nie udało się ustalić użytkownika."
-                        : "Could not identify the user."
                 );
                 return;
             }
@@ -1638,7 +1737,8 @@ async function showProfileSetup(fromSettings = false) {
                 .from("profiles")
                 .update({
                     username: displayName,
-                    display_name: displayName
+                    display_name: displayName,
+                    is_anonymous: anonymous
                 })
                 .eq("id", user.id);
 
@@ -1670,17 +1770,776 @@ async function showProfileSetup(fromSettings = false) {
             }
 
             if (fromSettings) {
-                if (gameStarted && situations.length > 0) {
-                    showSituation();
-                } else {
-                    showStartScreen();
-                }
+                await showProfileDashboard();
             } else {
                 showNextUnansweredQuestion();
             }
         });
+
+    document
+        .getElementById("backToProfileButton")
+        ?.addEventListener("click", () => {
+            showProfileDashboard();
+        });
 }
 
+
+function formatProfileDate(dateValue) {
+    if (!dateValue) return "—";
+
+    const date = new Date(dateValue);
+
+    if (Number.isNaN(date.getTime())) {
+        return "—";
+    }
+
+    return date.toLocaleDateString(
+        language === "ru"
+            ? "ru-RU"
+            : language === "pl"
+            ? "pl-PL"
+            : "en-GB",
+        {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric"
+        }
+    );
+}
+
+
+function getProfileLocalizedText(item) {
+    if (!item) return "";
+
+    return (
+        item[
+            language === "ru"
+                ? "text_ru"
+                : language === "pl"
+                ? "text_pl"
+                : "text_en"
+        ] ||
+        item.text_ru ||
+        item.text_en ||
+        item.text_pl ||
+        ""
+    );
+}
+
+
+function getProfileStatusLabel(status) {
+    const labels = {
+        ru: {
+            DRAFT: "Черновик",
+            PENDING: "На модерации",
+            APPROVED: "Одобрен",
+            REJECTED: "Отклонён"
+        },
+        pl: {
+            DRAFT: "Wersja robocza",
+            PENDING: "W moderacji",
+            APPROVED: "Zatwierdzony",
+            REJECTED: "Odrzucony"
+        },
+        en: {
+            DRAFT: "Draft",
+            PENDING: "Pending moderation",
+            APPROVED: "Approved",
+            REJECTED: "Rejected"
+        }
+    };
+
+    return labels[language]?.[status] || status || "—";
+}
+
+
+function escapeProfileHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+async function showProfileDashboard() {
+    const {
+        data: { user },
+        error: userError
+    } = await supabaseClient.auth.getUser();
+
+    if (userError || !user) {
+        await showStartScreen();
+        return;
+    }
+
+    card.innerHTML = `
+        <div style="text-align:center; padding:30px 10px;">
+            <div style="font-size:36px;">🚩</div>
+            <p style="margin-top:14px; color:#999;">
+                ${
+                    language === "ru"
+                        ? "Загружаем профиль..."
+                        : language === "pl"
+                        ? "Ładowanie profilu..."
+                        : "Loading profile..."
+                }
+            </p>
+        </div>
+    `;
+
+    const [
+        profileResult,
+        votesResult,
+        submissionsResult,
+        publishedQuestionsResult,
+        commentsResult
+    ] = await Promise.all([
+        supabaseClient
+            .from("profiles")
+            .select("display_name, username, avatar_url, bio, is_anonymous, created_at")
+            .eq("id", user.id)
+            .maybeSingle(),
+
+        supabaseClient
+            .from("votes")
+            .select("id, question_id, option_id, created_at")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false }),
+
+        supabaseClient
+            .from("question_submissions")
+            .select(
+                "id, text_ru, text_en, text_pl, type, moderation_status, created_at, is_anonymous, has_personal_experience"
+            )
+            .eq("created_by", user.id)
+            .order("created_at", { ascending: false }),
+
+        supabaseClient
+            .from("questions")
+            .select("id")
+            .eq("created_by", user.id)
+            .eq("status", "published"),
+
+        supabaseClient
+            .from("comments")
+            .select(
+                "id, question_id, body, created_at, is_anonymous, is_deleted"
+            )
+            .eq("created_by", user.id)
+            .eq("is_deleted", false)
+            .order("created_at", { ascending: false })
+    ]);
+
+    if (profileResult.error) {
+        console.error(
+            "Flagged: ошибка загрузки профиля:",
+            profileResult.error
+        );
+    }
+
+    if (votesResult.error) {
+        console.error(
+            "Flagged: ошибка загрузки ответов:",
+            votesResult.error
+        );
+    }
+
+    if (submissionsResult.error) {
+        console.error(
+            "Flagged: ошибка загрузки вопросов пользователя:",
+            submissionsResult.error
+        );
+    }
+
+    if (publishedQuestionsResult.error) {
+        console.error(
+            "Flagged: ошибка подсчёта опубликованных вопросов:",
+            publishedQuestionsResult.error
+        );
+    }
+
+    if (commentsResult.error) {
+        console.error(
+            "Flagged: ошибка загрузки комментариев пользователя:",
+            commentsResult.error
+        );
+    }
+
+    const profile = profileResult.data || {};
+    const votes = votesResult.data || [];
+    const submissions = submissionsResult.data || [];
+    const publishedQuestions = publishedQuestionsResult.data || [];
+    const comments = commentsResult.data || [];
+
+    const questionIdsFromVotes = [
+        ...new Set(
+            votes
+                .map(vote => vote.question_id)
+                .filter(Boolean)
+        )
+    ];
+
+    const optionIdsFromVotes = [
+        ...new Set(
+            votes
+                .map(vote => vote.option_id)
+                .filter(Boolean)
+        )
+    ];
+
+    const questionIdsFromComments = [
+        ...new Set(
+            comments
+                .map(comment => comment.question_id)
+                .filter(Boolean)
+        )
+    ];
+
+    const allReferencedQuestionIds = [
+        ...new Set([
+            ...questionIdsFromVotes,
+            ...questionIdsFromComments
+        ])
+    ];
+
+    let referencedQuestions = [];
+    let referencedOptions = [];
+
+    if (allReferencedQuestionIds.length > 0) {
+        const { data, error } = await supabaseClient
+            .from("questions")
+            .select("id, text_ru, text_en, text_pl, type")
+            .in("id", allReferencedQuestionIds);
+
+        if (error) {
+            console.error(
+                "Flagged: ошибка загрузки вопросов профиля:",
+                error
+            );
+        } else {
+            referencedQuestions = data || [];
+        }
+    }
+
+    if (optionIdsFromVotes.length > 0) {
+        const { data, error } = await supabaseClient
+            .from("options")
+            .select("id, question_id, text_ru, text_en, text_pl, position")
+            .in("id", optionIdsFromVotes);
+
+        if (error) {
+            console.error(
+                "Flagged: ошибка загрузки вариантов ответов профиля:",
+                error
+            );
+        } else {
+            referencedOptions = data || [];
+        }
+    }
+
+    const questionMap = new Map(
+        referencedQuestions.map(question => [question.id, question])
+    );
+
+    const optionMap = new Map(
+        referencedOptions.map(option => [option.id, option])
+    );
+
+    const displayName =
+        profile.display_name?.trim() ||
+        profile.username?.trim() ||
+        (
+            language === "ru"
+                ? "Аноним"
+                : language === "pl"
+                ? "Anonim"
+                : "Anonymous"
+        );
+
+    const registeredText = formatProfileDate(profile.created_at);
+
+    const stats = [
+        {
+            value: votes.length,
+            label:
+                language === "ru"
+                    ? "Ответов"
+                    : language === "pl"
+                    ? "Odpowiedzi"
+                    : "Answers"
+        },
+        {
+            value: submissions.length,
+            label:
+                language === "ru"
+                    ? "Вопросов задано"
+                    : language === "pl"
+                    ? "Dodanych pytań"
+                    : "Questions asked"
+        },
+        {
+            value: publishedQuestions.length,
+            label:
+                language === "ru"
+                    ? "Опубликовано"
+                    : language === "pl"
+                    ? "Opublikowanych"
+                    : "Published"
+        },
+        {
+            value: comments.length,
+            label:
+                language === "ru"
+                    ? "Комментариев"
+                    : language === "pl"
+                    ? "Komentarzy"
+                    : "Comments"
+        }
+    ];
+
+    const statHtml = stats
+        .map(
+            stat => `
+                <div style="
+                    flex:1;
+                    min-width:130px;
+                    padding:14px;
+                    border:1px solid #333;
+                    border-radius:14px;
+                    background:#171719;
+                    text-align:center;
+                ">
+                    <div style="
+                        font-size:24px;
+                        font-weight:700;
+                    ">${stat.value}</div>
+
+                    <div style="
+                        margin-top:6px;
+                        color:#999;
+                        font-size:13px;
+                    ">
+                        ${stat.label}
+                    </div>
+                </div>
+            `
+        )
+        .join("");
+
+    const myQuestionsHtml =
+        submissions.length === 0
+            ? `
+                <div style="
+                    color:#777;
+                    text-align:center;
+                    padding:18px 10px;
+                ">
+                    ${
+                        language === "ru"
+                            ? "Вы ещё не задавали вопросов."
+                            : language === "pl"
+                            ? "Nie dodałeś jeszcze żadnych pytań."
+                            : "You have not asked any questions yet."
+                    }
+                </div>
+            `
+            : submissions
+                .map(submission => {
+                    const questionText = escapeProfileHtml(
+                        getProfileLocalizedText(submission)
+                    );
+
+                    return `
+                        <div style="
+                            padding:14px;
+                            border:1px solid #333;
+                            border-radius:12px;
+                            background:#171719;
+                            margin-top:10px;
+                        ">
+                            <div style="
+                                line-height:1.5;
+                                color:#f4f4f7;
+                            ">
+                                ${questionText}
+                            </div>
+
+                            <div style="
+                                display:flex;
+                                justify-content:space-between;
+                                gap:10px;
+                                align-items:center;
+                                margin-top:10px;
+                                flex-wrap:wrap;
+                            ">
+                                <span style="
+                                    color:#999;
+                                    font-size:12px;
+                                ">
+                                    ${formatProfileDate(submission.created_at)}
+                                </span>
+
+                                <span style="
+                                    font-size:12px;
+                                    padding:5px 8px;
+                                    border:1px solid #444;
+                                    border-radius:999px;
+                                    color:#ddd;
+                                ">
+                                    ${escapeProfileHtml(
+                                        getProfileStatusLabel(
+                                            submission.moderation_status
+                                        )
+                                    )}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                })
+                .join("");
+
+    const myAnswersHtml =
+        votes.length === 0
+            ? `
+                <div style="
+                    color:#777;
+                    text-align:center;
+                    padding:18px 10px;
+                ">
+                    ${
+                        language === "ru"
+                            ? "Вы ещё не отвечали на вопросы."
+                            : language === "pl"
+                            ? "Nie odpowiedziałeś jeszcze na żadne pytanie."
+                            : "You have not answered any questions yet."
+                    }
+                </div>
+            `
+            : votes
+                .slice(0, 50)
+                .map(vote => {
+                    const question = questionMap.get(vote.question_id);
+                    const option = optionMap.get(vote.option_id);
+
+                    return `
+                        <div style="
+                            padding:14px;
+                            border:1px solid #333;
+                            border-radius:12px;
+                            background:#171719;
+                            margin-top:10px;
+                        ">
+                            <div style="
+                                line-height:1.5;
+                                color:#f4f4f7;
+                            ">
+                                ${escapeProfileHtml(
+                                    getProfileLocalizedText(question)
+                                )}
+                            </div>
+
+                            <div style="
+                                margin-top:8px;
+                                color:#aaa;
+                                font-size:13px;
+                            ">
+                                <strong style="color:#ddd;">
+                                    ${
+                                        language === "ru"
+                                            ? "Ответ:"
+                                            : language === "pl"
+                                            ? "Odpowiedź:"
+                                            : "Answer:"
+                                    }
+                                </strong>
+                                ${
+                                    escapeProfileHtml(
+                                        getProfileLocalizedText(option)
+                                    ) || "—"
+                                }
+                            </div>
+
+                            <div style="
+                                margin-top:8px;
+                                color:#777;
+                                font-size:12px;
+                            ">
+                                ${formatProfileDate(vote.created_at)}
+                            </div>
+                        </div>
+                    `;
+                })
+                .join("");
+
+    const myCommentsHtml =
+        comments.length === 0
+            ? `
+                <div style="
+                    color:#777;
+                    text-align:center;
+                    padding:18px 10px;
+                ">
+                    ${
+                        language === "ru"
+                            ? "Вы ещё не оставляли комментариев."
+                            : language === "pl"
+                            ? "Nie dodałeś jeszcze żadnych komentarzy."
+                            : "You have not posted any comments yet."
+                    }
+                </div>
+            `
+            : comments
+                .slice(0, 50)
+                .map(comment => {
+                    const question = questionMap.get(comment.question_id);
+
+                    return `
+                        <div style="
+                            padding:14px;
+                            border:1px solid #333;
+                            border-radius:12px;
+                            background:#171719;
+                            margin-top:10px;
+                        ">
+                            <div style="
+                                color:#777;
+                                font-size:12px;
+                            ">
+                                ${
+                                    language === "ru"
+                                        ? "На вопрос:"
+                                        : language === "pl"
+                                        ? "Przy pytaniu:"
+                                        : "On question:"
+                                }
+                            </div>
+
+                            <div style="
+                                margin-top:5px;
+                                color:#aaa;
+                                line-height:1.45;
+                            ">
+                                ${escapeProfileHtml(
+                                    getProfileLocalizedText(question)
+                                )}
+                            </div>
+
+                            <div style="
+                                margin-top:10px;
+                                color:#f4f4f7;
+                                line-height:1.5;
+                            ">
+                                ${escapeProfileHtml(comment.body)}
+                            </div>
+
+                            <div style="
+                                margin-top:8px;
+                                color:#777;
+                                font-size:12px;
+                            ">
+                                ${formatProfileDate(comment.created_at)}
+                            </div>
+                        </div>
+                    `;
+                })
+                .join("");
+
+    card.innerHTML = `
+        <div class="category">FLAGGED</div>
+
+        <div style="text-align:center;">
+            <div style="
+                width:70px;
+                height:70px;
+                margin:0 auto 14px;
+                border:1px solid #444;
+                border-radius:50%;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:30px;
+                background:#171719;
+            ">
+                🚩
+            </div>
+
+            <h2 style="
+                margin:0;
+                font-size:26px;
+            ">
+                ${escapeProfileHtml(displayName)}
+            </h2>
+
+            <p style="
+                margin:8px 0 0;
+                color:#777;
+                font-size:13px;
+            ">
+                ${
+                    language === "ru"
+                        ? "В Flagged с"
+                        : language === "pl"
+                        ? "W Flagged od"
+                        : "On Flagged since"
+                }
+                ${registeredText}
+            </p>
+        </div>
+
+        <div style="
+            display:flex;
+            flex-wrap:wrap;
+            gap:10px;
+            margin-top:22px;
+        ">
+            ${statHtml}
+        </div>
+
+        <div style="
+            margin-top:26px;
+            padding:16px;
+            border:1px solid #333;
+            border-radius:14px;
+            background:#171719;
+        ">
+            <div style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                gap:12px;
+            ">
+                <h3 style="
+                    margin:0;
+                    font-size:17px;
+                ">
+                    ${
+                        language === "ru"
+                            ? "Мои вопросы"
+                            : language === "pl"
+                            ? "Moje pytania"
+                            : "My questions"
+                    }
+                </h3>
+            </div>
+
+            ${myQuestionsHtml}
+        </div>
+
+        <div style="
+            margin-top:14px;
+            padding:16px;
+            border:1px solid #333;
+            border-radius:14px;
+            background:#171719;
+        ">
+            <h3 style="
+                margin:0;
+                font-size:17px;
+            ">
+                ${
+                    language === "ru"
+                        ? "Мои ответы"
+                        : language === "pl"
+                        ? "Moje odpowiedzi"
+                        : "My answers"
+                }
+            </h3>
+
+            ${myAnswersHtml}
+        </div>
+
+        <div style="
+            margin-top:14px;
+            padding:16px;
+            border:1px solid #333;
+            border-radius:14px;
+            background:#171719;
+        ">
+            <h3 style="
+                margin:0;
+                font-size:17px;
+            ">
+                ${
+                    language === "ru"
+                        ? "Мои комментарии"
+                        : language === "pl"
+                        ? "Moje komentarze"
+                        : "My comments"
+                }
+            </h3>
+
+            ${myCommentsHtml}
+        </div>
+
+        <div style="
+            display:flex;
+            gap:8px;
+            margin-top:18px;
+        ">
+            <button
+                id="profileSettingsButton"
+                type="button"
+                style="
+                    flex:1;
+                    padding:13px;
+                    border:1px solid #444;
+                    border-radius:10px;
+                    background:transparent;
+                    color:white;
+                    cursor:pointer;
+                "
+            >
+                ${
+                    language === "ru"
+                        ? "Настройки"
+                        : language === "pl"
+                        ? "Ustawienia"
+                        : "Settings"
+                }
+            </button>
+
+            <button
+                id="profileBackButton"
+                type="button"
+                style="
+                    flex:1;
+                    padding:13px;
+                    border:1px solid #444;
+                    border-radius:10px;
+                    background:transparent;
+                    color:white;
+                    cursor:pointer;
+                "
+            >
+                ${
+                    language === "ru"
+                        ? "Назад"
+                        : language === "pl"
+                        ? "Wróć"
+                        : "Back"
+                }
+            </button>
+        </div>
+    `;
+
+    document
+        .getElementById("profileSettingsButton")
+        ?.addEventListener("click", () => {
+            showProfileSetup(true);
+        });
+
+    document
+        .getElementById("profileBackButton")
+        ?.addEventListener("click", () => {
+            if (gameStarted && situations.length > 0) {
+                showSituation();
+            } else {
+                showStartScreen();
+            }
+        });
+}
 
 
 async function continueAfterAuth() {
@@ -2106,7 +2965,7 @@ document
 
 document
   .getElementById("profileButton")
-  ?.addEventListener("click", () => showProfileSetup(true));
+  ?.addEventListener("click", () => showProfileDashboard());
 
 document
   .getElementById("logoutButton")
