@@ -759,6 +759,30 @@ async function showCategoryScreen() {
 let lastSavedSubmissionId = null;
 
 async function showQuestionComposer() {
+  let questionAnonymousDefault = false;
+
+  const {
+    data: { user: composerUser }
+  } = await supabaseClient.auth.getUser();
+
+  if (composerUser) {
+    const { data: composerProfile, error: composerProfileError } =
+      await supabaseClient
+        .from("profiles")
+        .select("is_anonymous")
+        .eq("id", composerUser.id)
+        .maybeSingle();
+
+    if (composerProfileError) {
+      console.error(
+        "Flagged: ошибка загрузки настройки анонимности:",
+        composerProfileError
+      );
+    } else {
+      questionAnonymousDefault =
+        composerProfile?.is_anonymous === true;
+    }
+  }
 
   if (!flaggedCategories.length) {
     const loaded = await loadQuestionsFromSupabase();
@@ -947,7 +971,7 @@ async function showQuestionComposer() {
     return matches;
   };
 
-  const renderComposerFields = (type) => {
+  const renderComposerFields = (type, anonymousByDefault = false) => {
     const optionsBlock =
       type === "QUESTION"
         ? `
@@ -1126,6 +1150,33 @@ async function showQuestionComposer() {
         ${experienceBlock}
       </div>
 
+      <label
+        style="
+          display:flex;
+          align-items:flex-start;
+          gap:10px;
+          margin-top:16px;
+          line-height:1.45;
+          cursor:pointer;
+        "
+      >
+        <input
+          id="submissionAnonymous"
+          type="checkbox"
+          ${anonymousByDefault ? "checked" : ""}
+          style="margin-top:3px;"
+        >
+        <span>
+          ${
+            language === "ru"
+              ? "Опубликовать анонимно"
+              : language === "pl"
+              ? "Opublikuj anonimowo"
+              : "Post anonymously"
+          }
+        </span>
+      </label>
+
       ${categoryBlock}
 
       <button
@@ -1196,11 +1247,18 @@ async function showQuestionComposer() {
   };
 
   const render = (type = "SITUATION") => {
-    card.innerHTML = renderComposerFields(type);
+    card.innerHTML = renderComposerFields(type, questionAnonymousDefault);
 
     document
       .getElementById("userQuestionType")
       .addEventListener("change", event => {
+        const anonymousCheckbox =
+          document.getElementById("submissionAnonymous");
+
+        if (anonymousCheckbox) {
+          questionAnonymousDefault = anonymousCheckbox.checked;
+        }
+
         render(event.target.value);
       });
 
@@ -1363,6 +1421,10 @@ async function showQuestionComposer() {
               false
             : false;
 
+        const isAnonymous =
+          document.getElementById("submissionAnonymous")?.checked ??
+          questionAnonymousDefault;
+
         const submissionPayload = {
           created_by: user.id,
           original_language: language,
@@ -1370,7 +1432,7 @@ async function showQuestionComposer() {
           text_en: language === "en" ? text : null,
           text_pl: language === "pl" ? text : null,
           type: selectedType,
-          is_anonymous: false,
+          is_anonymous: isAnonymous,
           has_personal_experience: hasPersonalExperience,
           moderation_status: "DRAFT"
         };
@@ -4581,6 +4643,31 @@ async function renderComments(questionId) {
 
     if (!section) return;
 
+    let commentAnonymousDefault = false;
+
+    const {
+        data: { user: commentUser }
+    } = await supabaseClient.auth.getUser();
+
+    if (commentUser) {
+        const { data: commentProfile, error: commentProfileError } =
+            await supabaseClient
+                .from("profiles")
+                .select("is_anonymous")
+                .eq("id", commentUser.id)
+                .maybeSingle();
+
+        if (commentProfileError) {
+            console.error(
+                "Flagged: ошибка загрузки настройки анонимности комментария:",
+                commentProfileError
+            );
+        } else {
+            commentAnonymousDefault =
+                commentProfile?.is_anonymous === true;
+        }
+    }
+
     section.innerHTML = `
         <div style="margin-top:28px;">
             <h3 style="margin-bottom:14px;">
@@ -4628,6 +4715,7 @@ async function renderComments(questionId) {
                 <input
                     type="checkbox"
                     id="newCommentAnonymous"
+                    ${commentAnonymousDefault ? "checked" : ""}
                 >
                 ${
                     language === "ru"
@@ -4976,7 +5064,7 @@ async function addComment(
     await renderComments(questionId);
 }
 
-function showReplyForm(questionId, parentCommentId) {
+async function showReplyForm(questionId, parentCommentId) {
     const commentCard = document.querySelector(
         `.comment-card[data-comment-id="${parentCommentId}"]`
     );
@@ -4985,6 +5073,31 @@ function showReplyForm(questionId, parentCommentId) {
 
     if (commentCard.querySelector(".reply-comment-form")) {
         return;
+    }
+
+    let replyAnonymousDefault = false;
+
+    const {
+        data: { user: replyUser }
+    } = await supabaseClient.auth.getUser();
+
+    if (replyUser) {
+        const { data: replyProfile, error: replyProfileError } =
+            await supabaseClient
+                .from("profiles")
+                .select("is_anonymous")
+                .eq("id", replyUser.id)
+                .maybeSingle();
+
+        if (replyProfileError) {
+            console.error(
+                "Flagged: ошибка загрузки настройки анонимности ответа:",
+                replyProfileError
+            );
+        } else {
+            replyAnonymousDefault =
+                replyProfile?.is_anonymous === true;
+        }
     }
 
     const form = document.createElement("div");
@@ -5015,6 +5128,30 @@ function showReplyForm(questionId, parentCommentId) {
                 box-sizing:border-box;
             "
         ></textarea>
+
+        <label
+            style="
+                display:flex;
+                align-items:center;
+                gap:8px;
+                margin-top:8px;
+                font-size:13px;
+                cursor:pointer;
+            "
+        >
+            <input
+                type="checkbox"
+                class="reply-comment-anonymous"
+                ${replyAnonymousDefault ? "checked" : ""}
+            >
+            ${
+                language === "ru"
+                    ? "Ответить анонимно"
+                    : language === "pl"
+                    ? "Odpowiedz anonimowo"
+                    : "Reply anonymously"
+            }
+        </label>
 
         <div
             style="
@@ -5087,10 +5224,16 @@ function showReplyForm(questionId, parentCommentId) {
 
             if (!replyText) return;
 
+            const replyAnonymous =
+                form
+                    .querySelector(".reply-comment-anonymous")
+                    ?.checked ?? false;
+
             await addComment(
                 questionId,
                 parentCommentId,
-                replyText
+                replyText,
+                replyAnonymous
             );
         });
 }
