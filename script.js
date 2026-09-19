@@ -3239,6 +3239,21 @@ async function showModerationPanel() {
           )
         : "";
 
+      const authorLabel =
+        submission.is_anonymous
+          ? language === "ru"
+            ? "Аноним"
+            : language === "pl"
+            ? "Anonim"
+            : "Anonymous"
+          : submission.author?.display_name ||
+            submission.author?.username ||
+            (language === "ru"
+              ? "Пользователь"
+              : language === "pl"
+              ? "Użytkownik"
+              : "User");
+
       const statusLabel =
         language === "ru"
           ? "На проверке"
@@ -3300,6 +3315,10 @@ async function showModerationPanel() {
                 `
                 : ""
             }
+
+            <span class="moderation-badge">
+              👤 ${escapeProfileHtml(authorLabel)}
+            </span>
 
             <span class="moderation-badge">
               ${
@@ -3377,6 +3396,35 @@ function showModerationSubmission(submission) {
 
     <p style="opacity:0.65;">
       #${submission.id} · ${submission.type}
+    </p>
+
+    <p style="margin-top:10px;">
+      <strong>
+        ${
+          language === "ru"
+            ? "Автор:"
+            : language === "pl"
+            ? "Autor:"
+            : "Author:"
+        }
+      </strong>
+      ${
+        submission.is_anonymous
+          ? language === "ru"
+            ? "Аноним"
+            : language === "pl"
+            ? "Anonim"
+            : "Anonymous"
+          : escapeProfileHtml(
+              submission.author?.display_name ||
+              submission.author?.username ||
+              (language === "ru"
+                ? "Пользователь"
+                : language === "pl"
+                ? "Użytkownik"
+                : "User")
+            )
+      }
     </p>
 
     <div
