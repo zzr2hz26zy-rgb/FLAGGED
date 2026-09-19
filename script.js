@@ -1339,15 +1339,14 @@ async function showQuestionComposer(editSubmissionId = null) {
       <button
         id="submitQuestionButton"
         type="button"
-        ${editingSubmissionId ? "" : "disabled"}
         style="
           width:100%;
           margin-top:8px;
           padding:14px;
           border:none;
           border-radius:10px;
-          cursor:${editingSubmissionId ? "pointer" : "not-allowed"};
-          opacity:${editingSubmissionId ? "1" : "0.5"};
+          cursor:pointer;
+          opacity:1;
         "
       >
         ${
@@ -1430,7 +1429,11 @@ async function showQuestionComposer(editSubmissionId = null) {
     document
       .getElementById("submitQuestionButton")
       .addEventListener("click", async () => {
-        if (!lastSavedSubmissionId) return;
+        const savedSuccessfully = await saveCurrentQuestion(true);
+
+        if (!savedSuccessfully || !lastSavedSubmissionId) {
+          return;
+        }
 
         const { error } = await supabaseClient.rpc(
           "submit_question_submission",
@@ -1465,9 +1468,7 @@ async function showQuestionComposer(editSubmissionId = null) {
         showNextUnansweredQuestion();
       });
 
-    document
-      .getElementById("saveDraftButton")
-      .addEventListener("click", async () => {
+    const saveCurrentQuestion = async (silent = false) => {
         const text = document
           .getElementById("userQuestionText")
           .value
@@ -1682,15 +1683,17 @@ async function showQuestionComposer(editSubmissionId = null) {
 
           lastSavedSubmissionId = editingSubmissionId;
 
-          alert(
-            language === "ru"
-              ? "Изменения сохранены."
-              : language === "pl"
-              ? "Zmiany zostały zapisane."
-              : "Changes saved."
-          );
+          if (!silent) {
+            alert(
+              language === "ru"
+                ? "Изменения сохранены."
+                : language === "pl"
+                ? "Zmiany zostały zapisane."
+                : "Changes saved."
+            );
+          }
 
-          return;
+          return true;
         }
 
         const {
@@ -1798,14 +1801,25 @@ async function showQuestionComposer(editSubmissionId = null) {
           hasPersonalExperience
         });
 
-        alert(
-          language === "ru"
-            ? "Черновик сохранён."
-            : language === "pl"
-            ? "Wersja robocza została zapisana."
-            : "Draft saved."
-        );
+        if (!silent) {
+          alert(
+            language === "ru"
+              ? "Черновик сохранён."
+              : language === "pl"
+              ? "Wersja robocza została zapisana."
+              : "Draft saved."
+          );
+        }
+
+        return true;
+    };
+
+    document
+      .getElementById("saveDraftButton")
+      .addEventListener("click", async () => {
+        await saveCurrentQuestion(false);
       });
+
   };
 
   render(draftState?.type || "SITUATION");
