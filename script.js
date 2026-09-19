@@ -758,8 +758,16 @@ async function showCategoryScreen() {
 
 let lastSavedSubmissionId = null;
 
-async function showQuestionComposer() {
+async function showQuestionComposer(editSubmissionId = null) {
   let questionAnonymousDefault = false;
+  let editingSubmissionId = editSubmissionId
+    ? Number(editSubmissionId)
+    : null;
+  let draftState = null;
+
+  if (!editingSubmissionId) {
+    lastSavedSubmissionId = null;
+  }
 
   const {
     data: { user: composerUser }
@@ -938,6 +946,120 @@ async function showQuestionComposer() {
   };
 
 
+  if (editingSubmissionId) {
+    if (!composerUser) {
+      alert(
+        language === "ru"
+          ? "Для редактирования черновика нужен аккаунт."
+          : language === "pl"
+          ? "Do edycji wersji roboczej potrzebne jest konto."
+          : "An account is required to edit a draft."
+      );
+      return;
+    }
+
+    const {
+      data: draft,
+      error: draftError
+    } = await supabaseClient
+      .from("question_submissions")
+      .select(
+        "id, text_ru, text_en, text_pl, type, moderation_status, is_anonymous, has_personal_experience"
+      )
+      .eq("id", editingSubmissionId)
+      .eq("created_by", composerUser.id)
+      .eq("moderation_status", "DRAFT")
+      .maybeSingle();
+
+    if (draftError || !draft) {
+      console.error(
+        "Flagged: ошибка загрузки черновика:",
+        draftError
+      );
+
+      alert(
+        language === "ru"
+          ? "Не удалось открыть этот черновик."
+          : language === "pl"
+          ? "Nie udało się otworzyć tej wersji roboczej."
+          : "Could not open this draft."
+      );
+      return;
+    }
+
+    const [
+      {
+        data: draftOptions,
+        error: draftOptionsError
+      },
+      {
+        data: draftCategory,
+        error: draftCategoryError
+      }
+    ] = await Promise.all([
+      supabaseClient
+        .from("question_submission_options")
+        .select("position, text_ru, text_en, text_pl")
+        .eq("submission_id", editingSubmissionId)
+        .order("position"),
+
+      supabaseClient
+        .from("submission_categories")
+        .select("category_id")
+        .eq("submission_id", editingSubmissionId)
+        .eq("is_primary", true)
+        .maybeSingle()
+    ]);
+
+    if (draftOptionsError || draftCategoryError) {
+      console.error(
+        "Flagged: ошибка загрузки данных черновика:",
+        draftOptionsError || draftCategoryError
+      );
+
+      alert(
+        language === "ru"
+          ? "Не удалось загрузить данные черновика."
+          : language === "pl"
+          ? "Nie udało się załadować danych wersji roboczej."
+          : "Could not load the draft data."
+      );
+      return;
+    }
+
+    draftState = {
+      text_ru: draft.text_ru || "",
+      text_en: draft.text_en || "",
+      text_pl: draft.text_pl || "",
+      text:
+        draft[`text_${language}`] ||
+        draft.text_ru ||
+        draft.text_en ||
+        draft.text_pl ||
+        "",
+      type: draft.type || "SITUATION",
+      isAnonymous: draft.is_anonymous === true,
+      hasPersonalExperience:
+        draft.has_personal_experience === true,
+      categoryId: draftCategory?.category_id || null,
+      options: (draftOptions || []).map(option => ({
+        position: option.position,
+        text_ru: option.text_ru || "",
+        text_en: option.text_en || "",
+        text_pl: option.text_pl || "",
+        text:
+          option[`text_${language}`] ||
+          option.text_ru ||
+          option.text_en ||
+          option.text_pl ||
+          ""
+      }))
+    };
+
+    questionAnonymousDefault = draftState.isAnonymous;
+    lastSavedSubmissionId = editingSubmissionId;
+  }
+
   const getCategorySuggestions = (questionText) => {
     const normalizedText = questionText.toLowerCase();
 
@@ -971,7 +1093,7 @@ async function showQuestionComposer() {
     return matches;
   };
 
-  const renderComposerFields = (type, anonymousByDefault = false) => {
+  const renderComposerFields = (type, anonymousByDefault = false, currentDraft = null) => {
     const optionsBlock =
       type === "QUESTION"
         ? `
@@ -999,6 +1121,11 @@ async function showQuestionComposer() {
                         ? `Opcja ${position}`
                         : `Option ${position}`
                     }"
+                    value="${escapeProfileHtml(
+                      currentDraft?.options?.find(
+                        option => option.position === position
+                      )?.text || ""
+                    )}"
                     style="width:100%; box-sizing:border-box; margin-top:8px; padding:12px; border-radius:10px;"
                   >
                 `
@@ -1020,7 +1147,7 @@ async function showQuestionComposer() {
               line-height:1.4;
             "
           >
-            <input id="submissionPersonalExperience" type="checkbox">
+            <input id="submissionPersonalExperience" type="checkbox" ${currentDraft?.hasPersonalExperience ? "checked" : ""}>
             <span>
               ${
                 language === "ru"
@@ -1042,6 +1169,9 @@ async function showQuestionComposer() {
       categorySuggestions.length > 0
         ? categorySuggestions[0].id
         : "";
+
+    const selectedCategoryId =
+      currentDraft?.categoryId || recommendedCategory;
 
     const categoryBlock = `
       <div
@@ -1087,7 +1217,7 @@ async function showQuestionComposer() {
               category => `
                 <option
                   value="${category.id}"
-                  ${category.id === recommendedCategory ? "selected" : ""}
+                  ${category.id === selectedCategoryId ? "selected" : ""}
                 >
                   ${category.icon || ""} ${
                     category[`name_${language}`] || category.name
@@ -1131,7 +1261,7 @@ async function showQuestionComposer() {
           border-radius:10px;
           resize:vertical;
         "
-      ></textarea>
+      >${escapeProfileHtml(currentDraft?.text || "")}</textarea>
       <select
         id="userQuestionType"
         style="
@@ -1163,7 +1293,7 @@ async function showQuestionComposer() {
         <input
           id="submissionAnonymous"
           type="checkbox"
-          ${anonymousByDefault ? "checked" : ""}
+          ${currentDraft ? (currentDraft.isAnonymous ? "checked" : "") : (anonymousByDefault ? "checked" : "")}
           style="margin-top:3px;"
         >
         <span>
@@ -1192,7 +1322,13 @@ async function showQuestionComposer() {
         "
       >
         ${
-          language === "ru"
+          editingSubmissionId
+            ? language === "ru"
+              ? "Сохранить изменения"
+              : language === "pl"
+              ? "Zapisz zmiany"
+              : "Save changes"
+            : language === "ru"
             ? "Сохранить как черновик"
             : language === "pl"
             ? "Zapisz jako wersję roboczą"
@@ -1203,15 +1339,15 @@ async function showQuestionComposer() {
       <button
         id="submitQuestionButton"
         type="button"
-        disabled
+        ${editingSubmissionId ? "" : "disabled"}
         style="
           width:100%;
           margin-top:8px;
           padding:14px;
           border:none;
           border-radius:10px;
-          cursor:not-allowed;
-          opacity:0.5;
+          cursor:${editingSubmissionId ? "pointer" : "not-allowed"};
+          opacity:${editingSubmissionId ? "1" : "0.5"};
         "
       >
         ${
@@ -1247,7 +1383,7 @@ async function showQuestionComposer() {
   };
 
   const render = (type = "SITUATION") => {
-    card.innerHTML = renderComposerFields(type, questionAnonymousDefault);
+    card.innerHTML = renderComposerFields(type, questionAnonymousDefault, draftState);
 
     document
       .getElementById("userQuestionType")
@@ -1448,6 +1584,115 @@ async function showQuestionComposer() {
           return;
         }
 
+        const optionsForUpdate = options.map(option => {
+          const previousOption =
+            draftState?.options?.find(
+              item => item.position === option.position
+            ) || {};
+
+          return {
+            position: option.position,
+            text_ru:
+              language === "ru"
+                ? option.text
+                : previousOption.text_ru || null,
+            text_en:
+              language === "en"
+                ? option.text
+                : previousOption.text_en || null,
+            text_pl:
+              language === "pl"
+                ? option.text
+                : previousOption.text_pl || null
+          };
+        });
+
+        if (editingSubmissionId) {
+          const { error: updateError } =
+            await supabaseClient.rpc(
+              "update_question_submission_draft",
+              {
+                p_submission_id: editingSubmissionId,
+                p_text_ru:
+                  language === "ru"
+                    ? text
+                    : draftState?.text_ru || null,
+                p_text_en:
+                  language === "en"
+                    ? text
+                    : draftState?.text_en || null,
+                p_text_pl:
+                  language === "pl"
+                    ? text
+                    : draftState?.text_pl || null,
+                p_type: selectedType,
+                p_is_anonymous: isAnonymous,
+                p_has_personal_experience:
+                  hasPersonalExperience,
+                p_category_id: selectedCategoryId,
+                p_options: optionsForUpdate
+              }
+            );
+
+          if (updateError) {
+            console.error(
+              "Flagged: ошибка обновления черновика:",
+              updateError
+            );
+
+            alert(
+              language === "ru"
+                ? "Не удалось сохранить изменения."
+                : language === "pl"
+                ? "Nie udało się zapisać zmian."
+                : "The changes could not be saved."
+            );
+            return;
+          }
+
+          draftState = {
+            ...(draftState || {}),
+            text,
+            text_ru:
+              language === "ru"
+                ? text
+                : draftState?.text_ru || "",
+            text_en:
+              language === "en"
+                ? text
+                : draftState?.text_en || "",
+            text_pl:
+              language === "pl"
+                ? text
+                : draftState?.text_pl || "",
+            type: selectedType,
+            isAnonymous,
+            hasPersonalExperience,
+            categoryId: selectedCategoryId,
+            options: optionsForUpdate.map(option => ({
+              ...option,
+              text:
+                option[`text_${language}`] ||
+                option.text_ru ||
+                option.text_en ||
+                option.text_pl ||
+                ""
+            }))
+          };
+
+          lastSavedSubmissionId = editingSubmissionId;
+
+          alert(
+            language === "ru"
+              ? "Изменения сохранены."
+              : language === "pl"
+              ? "Zmiany zostały zapisane."
+              : "Changes saved."
+          );
+
+          return;
+        }
+
         const {
           data: submission,
           error: submissionError
@@ -1563,7 +1808,7 @@ async function showQuestionComposer() {
       });
   };
 
-  render("SITUATION");
+  render(draftState?.type || "SITUATION");
 }
 
 
@@ -2259,6 +2504,37 @@ async function showProfileDashboard() {
                             </div>
 
                             ${
+                                submission.moderation_status === "DRAFT"
+                                    ? `
+                                        <button
+                                            type="button"
+                                            class="edit-draft-button"
+                                            data-submission-id="${submission.id}"
+                                            style="
+                                                width:100%;
+                                                margin-top:10px;
+                                                padding:10px;
+                                                border:1px solid #444;
+                                                border-radius:10px;
+                                                background:transparent;
+                                                color:#f4f4f7;
+                                                cursor:pointer;
+                                                font-size:13px;
+                                            "
+                                        >
+                                            ${
+                                                language === "ru"
+                                                    ? "Продолжить редактирование"
+                                                    : language === "pl"
+                                                    ? "Kontynuuj edycję"
+                                                    : "Continue editing"
+                                            }
+                                        </button>
+                                    `
+                                    : ""
+                            }
+
+                            ${
                                 submission.moderation_status === "REJECTED" &&
                                 submission.moderator_note
                                     ? `
@@ -2632,6 +2908,20 @@ async function showProfileDashboard() {
             } else {
                 showStartScreen();
             }
+        });
+
+    document
+        .querySelectorAll(".edit-draft-button")
+        .forEach(button => {
+            button.addEventListener("click", () => {
+                const submissionId = Number(
+                    button.dataset.submissionId
+                );
+
+                if (submissionId) {
+                    showQuestionComposer(submissionId);
+                }
+            });
         });
 }
 
