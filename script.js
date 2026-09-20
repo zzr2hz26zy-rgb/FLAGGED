@@ -2428,18 +2428,32 @@ async function showProfileDashboard() {
         }
     ];
 
+    const statKeys = [
+        "answers",
+        "questions",
+        "published",
+        "comments"
+    ];
+
     const statHtml = stats
         .map(
-            stat => `
-                <div style="
-                    flex:1;
-                    min-width:130px;
-                    padding:14px;
-                    border:1px solid #333;
-                    border-radius:14px;
-                    background:#171719;
-                    text-align:center;
-                ">
+            (stat, index) => `
+                <button
+                    type="button"
+                    class="profile-stat-button"
+                    data-profile-section="${statKeys[index]}"
+                    style="
+                        flex:1;
+                        min-width:130px;
+                        padding:14px;
+                        border:1px solid #333;
+                        border-radius:14px;
+                        background:#171719;
+                        color:#f4f4f7;
+                        text-align:center;
+                        cursor:pointer;
+                    "
+                >
                     <div style="
                         font-size:24px;
                         font-weight:700;
@@ -2452,7 +2466,7 @@ async function showProfileDashboard() {
                     ">
                         ${stat.label}
                     </div>
-                </div>
+                </button>
             `
         )
         .join("");
@@ -2739,6 +2753,7 @@ async function showProfileDashboard() {
                 .join("");
 
     card.innerHTML = `
+        <div id="profileDashboardMain">
         <div class="category">FLAGGED</div>
 
         <div style="text-align:center;">
@@ -2790,82 +2805,6 @@ async function showProfileDashboard() {
         </div>
 
         <div style="
-            margin-top:26px;
-            padding:16px;
-            border:1px solid #333;
-            border-radius:14px;
-            background:#171719;
-        ">
-            <div style="
-                display:flex;
-                justify-content:space-between;
-                align-items:center;
-                gap:12px;
-            ">
-                <h3 style="
-                    margin:0;
-                    font-size:17px;
-                ">
-                    ${
-                        language === "ru"
-                            ? "Мои вопросы"
-                            : language === "pl"
-                            ? "Moje pytania"
-                            : "My questions"
-                    }
-                </h3>
-            </div>
-
-            ${myQuestionsHtml}
-        </div>
-
-        <div style="
-            margin-top:14px;
-            padding:16px;
-            border:1px solid #333;
-            border-radius:14px;
-            background:#171719;
-        ">
-            <h3 style="
-                margin:0;
-                font-size:17px;
-            ">
-                ${
-                    language === "ru"
-                        ? "Мои ответы"
-                        : language === "pl"
-                        ? "Moje odpowiedzi"
-                        : "My answers"
-                }
-            </h3>
-
-            ${myAnswersHtml}
-        </div>
-
-        <div style="
-            margin-top:14px;
-            padding:16px;
-            border:1px solid #333;
-            border-radius:14px;
-            background:#171719;
-        ">
-            <h3 style="
-                margin:0;
-                font-size:17px;
-            ">
-                ${
-                    language === "ru"
-                        ? "Мои комментарии"
-                        : language === "pl"
-                        ? "Moje komentarze"
-                        : "My comments"
-                }
-            </h3>
-
-            ${myCommentsHtml}
-        </div>
-
-        <div style="
             display:flex;
             gap:8px;
             margin-top:18px;
@@ -2914,7 +2853,242 @@ async function showProfileDashboard() {
                 }
             </button>
         </div>
+        </div>
+
+        <div
+            id="profileDetailScreen"
+            style="display:none; margin-top:26px;"
+        >
+            <div class="category">FLAGGED</div>
+
+            <h2
+                id="profileDetailTitle"
+                style="text-align:center;"
+            ></h2>
+
+            <div id="profileDetailContent"></div>
+
+            <button
+                id="profileDetailBackButton"
+                type="button"
+                style="
+                    width:100%;
+                    margin-top:18px;
+                    padding:13px;
+                    border:1px solid #444;
+                    border-radius:10px;
+                    background:transparent;
+                    color:white;
+                    cursor:pointer;
+                "
+            >
+                ${
+                    language === "ru"
+                        ? "Назад в профиль"
+                        : language === "pl"
+                        ? "Wróć do profilu"
+                        : "Back to profile"
+                }
+            </button>
+        </div>
+
     `;
+
+    const profileSectionTitles = {
+        answers:
+            language === "ru"
+                ? "Мои ответы"
+                : language === "pl"
+                ? "Moje odpowiedzi"
+                : "My answers",
+
+        questions:
+            language === "ru"
+                ? "Мои вопросы"
+                : language === "pl"
+                ? "Moje pytania"
+                : "My questions",
+
+        published:
+            language === "ru"
+                ? "Опубликованные вопросы"
+                : language === "pl"
+                ? "Opublikowane pytania"
+                : "Published questions",
+
+        comments:
+            language === "ru"
+                ? "Мои комментарии"
+                : language === "pl"
+                ? "Moje komentarze"
+                : "My comments"
+    };
+
+    const openProfileSection = async sectionKey => {
+        const detailScreen =
+            document.getElementById("profileDetailScreen");
+
+        const detailTitle =
+            document.getElementById("profileDetailTitle");
+
+        const detailContent =
+            document.getElementById("profileDetailContent");
+
+        if (!detailScreen || !detailTitle || !detailContent) {
+            return;
+        }
+
+        detailTitle.textContent =
+            profileSectionTitles[sectionKey] || "";
+
+        detailScreen.style.display = "block";
+
+        document
+            .getElementById("profileDashboardMain")
+            ?.style.setProperty("display", "none");
+
+        detailContent.innerHTML = `
+            <div style="
+                text-align:center;
+                color:#777;
+                padding:24px 10px;
+            ">
+                ${
+                    language === "ru"
+                        ? "Загружаем..."
+                        : language === "pl"
+                        ? "Ładowanie..."
+                        : "Loading..."
+                }
+            </div>
+        `;
+
+        if (sectionKey === "answers") {
+            detailContent.innerHTML = myAnswersHtml;
+            return;
+        }
+
+        if (sectionKey === "questions") {
+            detailContent.innerHTML = myQuestionsHtml;
+            return;
+        }
+
+        if (sectionKey === "comments") {
+            detailContent.innerHTML = myCommentsHtml;
+            return;
+        }
+
+        if (sectionKey === "published") {
+            const { data, error } = await supabaseClient
+                .from("questions")
+                .select(
+                    "id, text_ru, text_en, text_pl, type, published_at, created_at"
+                )
+                .eq("created_by", user.id)
+                .eq("status", "published")
+                .order("published_at", {
+                    ascending: false
+                });
+
+            if (error) {
+                console.error(
+                    "Flagged: ошибка загрузки опубликованных вопросов:",
+                    error
+                );
+
+                detailContent.innerHTML = `
+                    <div style="
+                        text-align:center;
+                        color:#777;
+                        padding:24px 10px;
+                    ">
+                        ${
+                            language === "ru"
+                                ? "Не удалось загрузить вопросы."
+                                : language === "pl"
+                                ? "Nie udało się załadować pytań."
+                                : "Could not load questions."
+                        }
+                    </div>
+                `;
+
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                detailContent.innerHTML = `
+                    <div style="
+                        text-align:center;
+                        color:#777;
+                        padding:24px 10px;
+                    ">
+                        ${
+                            language === "ru"
+                                ? "У вас пока нет опубликованных вопросов."
+                                : language === "pl"
+                                ? "Nie masz jeszcze opublikowanych pytań."
+                                : "You do not have any published questions yet."
+                        }
+                    </div>
+                `;
+
+                return;
+            }
+
+            detailContent.innerHTML = data
+                .map(question => `
+                    <div style="
+                        padding:14px;
+                        border:1px solid #333;
+                        border-radius:12px;
+                        background:#171719;
+                        margin-top:10px;
+                    ">
+                        <div style="
+                            line-height:1.5;
+                            color:#f4f4f7;
+                        ">
+                            ${escapeProfileHtml(
+                                getProfileLocalizedText(question)
+                            )}
+                        </div>
+
+                        <div style="
+                            margin-top:8px;
+                            color:#777;
+                            font-size:12px;
+                        ">
+                            ${formatProfileDate(
+                                question.published_at ||
+                                question.created_at
+                            )}
+                        </div>
+                    </div>
+                `)
+                .join("");
+        }
+    };
+
+    document
+        .querySelectorAll(".profile-stat-button")
+        .forEach(button => {
+            button.addEventListener("click", () => {
+                openProfileSection(
+                    button.dataset.profileSection
+                );
+            });
+        });
+
+    document
+        .getElementById("profileDetailBackButton")
+        ?.addEventListener("click", () => {
+            document.getElementById("profileDetailScreen").style.display =
+                "none";
+
+            document
+                .getElementById("profileDashboardMain")
+                ?.style.setProperty("display", "block");
+        });
 
     document
         .getElementById("profileSettingsButton")
