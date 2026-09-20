@@ -259,6 +259,8 @@ let gameStarted = false;
 let selectedCategorySlug = "all";
 let language = localStorage.getItem("flaggedLanguage") || "en";
 
+let authReturnAction = () => showStartScreen();
+
 const card = document.querySelector(".card");
 const app = document.querySelector(".app");
 
@@ -349,7 +351,7 @@ function createLanguageSelector() {
                     ? "signup"
                     : "signin";
 
-                await showAuthComposer(authMode);
+                await showAuthComposer(authMode, true);
             } else if (gameStarted && situations.length > 0) {
                 showSituation();
             } else {
@@ -3003,7 +3005,32 @@ async function continueAfterAuth() {
 }
 
 
-async function showAuthComposer() {
+async function showAuthComposer(mode = "signin", preserveReturn = false) {
+
+  if (!preserveReturn) {
+    const isVisible = (id) => {
+      const el = document.getElementById(id);
+      return !!el && el.offsetParent !== null;
+    };
+
+    if (isVisible("backToProfileButton")) {
+      authReturnAction = () => showProfileDashboard();
+    } else if (isVisible("profileBackButton")) {
+      authReturnAction = () => showProfileDashboard();
+    } else if (isVisible("backFromModerationButton") ||
+               isVisible("moderationList")) {
+      authReturnAction = () => showModerationPanel();
+    } else if (isVisible("backToGameButton")) {
+      authReturnAction = () => showNextUnansweredQuestion();
+    } else if (isVisible("backToStartButton")) {
+      authReturnAction = () => showCategoryScreen();
+    } else if (gameStarted && situations.length > 0) {
+      authReturnAction = () => showSituation();
+    } else {
+      authReturnAction = () => showStartScreen();
+    }
+  }
+
   const renderAuth = (mode = "signin") => {
     const isSignUp = mode === "signup";
 
@@ -3192,7 +3219,7 @@ async function showAuthComposer() {
     document
       .getElementById("backFromAuthButton")
       .addEventListener("click", () => {
-        showNextUnansweredQuestion();
+        authReturnAction();
       });
 
     if (isSignUp) {
@@ -3302,7 +3329,7 @@ async function showAuthComposer() {
     }
   };
 
-  renderAuth("signin");
+  renderAuth(mode);
 }
 
 
