@@ -1423,7 +1423,13 @@ async function showQuestionComposer(editSubmissionId = null) {
     document
       .getElementById("backToGameButton")
       .addEventListener("click", () => {
-        showNextUnansweredQuestion();
+        if (editingSubmissionId) {
+          showProfileDashboard();
+        } else if (gameStarted && situations.length > 0) {
+          showSituation();
+        } else {
+          showStartScreen();
+        }
       });
 
     document
