@@ -4173,6 +4173,30 @@ function showSituation() {
     const situation = situations[currentIndex];
 
     card.innerHTML = `
+        <button
+            id="backToCategoriesFromQuestion"
+            type="button"
+            style="
+                width:100%;
+                padding:10px 12px;
+                margin-bottom:14px;
+                border:1px solid #444;
+                border-radius:10px;
+                background:transparent;
+                color:#999;
+                font-size:13px;
+                cursor:pointer;
+            "
+        >
+            ${
+                language === "ru"
+                    ? "← К категориям"
+                    : language === "pl"
+                    ? "← Do kategorii"
+                    : "← Back to categories"
+            }
+        </button>
+
         <div class="category">
             ${categoryName(situation.category)}
         </div>
@@ -4248,6 +4272,18 @@ function showSituation() {
 
 <div id="commentsSection" class="comments-section"></div>
     `;
+
+    document
+        .getElementById("backToCategoriesFromQuestion")
+        ?.addEventListener("click", () => {
+            pendingAnswer = null;
+            pendingPersonalExperience = null;
+            pendingAnswerSelection = null;
+            currentIndex = 0;
+            gameStarted = false;
+
+            showCategoryScreen();
+        });
 
     const buttons = card.querySelectorAll(".buttons button");
 
