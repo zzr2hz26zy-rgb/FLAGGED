@@ -2221,6 +2221,7 @@ async function showProfileDashboard() {
     const [
         profileResult,
         votesResult,
+        questionAnswersResult,
         submissionsResult,
         publishedQuestionsResult,
         commentsResult
@@ -2234,6 +2235,12 @@ async function showProfileDashboard() {
         supabaseClient
             .from("votes")
             .select("id, question_id, option_id, created_at")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false }),
+
+        supabaseClient
+            .from("question_answers")
+            .select("id, question_id, answer_text, created_at")
             .eq("user_id", user.id)
             .order("created_at", { ascending: false }),
 
@@ -2275,6 +2282,13 @@ async function showProfileDashboard() {
         );
     }
 
+    if (questionAnswersResult.error) {
+        console.error(
+            "Flagged: ошибка загрузки текстовых ответов:",
+            questionAnswersResult.error
+        );
+    }
+
     if (submissionsResult.error) {
         console.error(
             "Flagged: ошибка загрузки вопросов пользователя:",
@@ -2298,6 +2312,7 @@ async function showProfileDashboard() {
 
     const profile = profileResult.data || {};
     const votes = votesResult.data || [];
+    const questionAnswers = questionAnswersResult.data || [];
     const submissions = submissionsResult.data || [];
     const publishedQuestions = publishedQuestionsResult.data || [];
     const comments = commentsResult.data || [];
@@ -2306,6 +2321,14 @@ async function showProfileDashboard() {
         ...new Set(
             votes
                 .map(vote => vote.question_id)
+                .filter(Boolean)
+        )
+    ];
+
+    const questionIdsFromTextAnswers = [
+        ...new Set(
+            questionAnswers
+                .map(answer => answer.question_id)
                 .filter(Boolean)
         )
     ];
@@ -2329,6 +2352,7 @@ async function showProfileDashboard() {
     const allReferencedQuestionIds = [
         ...new Set([
             ...questionIdsFromVotes,
+            ...questionIdsFromTextAnswers,
             ...questionIdsFromComments
         ])
     ];
@@ -2391,7 +2415,7 @@ async function showProfileDashboard() {
 
     const stats = [
         {
-            value: votes.length,
+            value: votes.length + questionAnswers.length,
             label:
                 language === "ru"
                     ? "Ответов"
@@ -2606,8 +2630,29 @@ async function showProfileDashboard() {
                 })
                 .join("");
 
+    const allProfileAnswers = [
+        ...votes.map(vote => ({
+            kind: "vote",
+            question_id: vote.question_id,
+            option_id: vote.option_id,
+            answer_text: null,
+            created_at: vote.created_at
+        })),
+        ...questionAnswers.map(answer => ({
+            kind: "text",
+            question_id: answer.question_id,
+            option_id: null,
+            answer_text: answer.answer_text,
+            created_at: answer.created_at
+        }))
+    ].sort(
+        (a, b) =>
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime()
+    );
+
     const myAnswersHtml =
-        votes.length === 0
+        allProfileAnswers.length === 0
             ? `
                 <div style="
                     color:#777;
@@ -2623,11 +2668,21 @@ async function showProfileDashboard() {
                     }
                 </div>
             `
-            : votes
+            : allProfileAnswers
                 .slice(0, 50)
-                .map(vote => {
-                    const question = questionMap.get(vote.question_id);
-                    const option = optionMap.get(vote.option_id);
+                .map(answer => {
+                    const question = questionMap.get(answer.question_id);
+
+                    let answerText = "—";
+
+                    if (answer.kind === "text") {
+                        answerText = answer.answer_text || "—";
+                    } else {
+                        const option = optionMap.get(answer.option_id);
+
+                        answerText =
+                            getProfileLocalizedText(option) || "—";
+                    }
 
                     return `
                         <div style="
@@ -2660,11 +2715,7 @@ async function showProfileDashboard() {
                                             : "Answer:"
                                     }
                                 </strong>
-                                ${
-                                    escapeProfileHtml(
-                                        getProfileLocalizedText(option)
-                                    ) || "—"
-                                }
+                                ${escapeProfileHtml(answerText)}
                             </div>
 
                             <div style="
@@ -2672,7 +2723,7 @@ async function showProfileDashboard() {
                                 color:#777;
                                 font-size:12px;
                             ">
-                                ${formatProfileDate(vote.created_at)}
+                                ${formatProfileDate(answer.created_at)}
                             </div>
                         </div>
                     `;
@@ -4425,10 +4476,64 @@ function showSituation() {
                     `<button class="answer-option" data-option-id="${option.id}">${option[language]}</button>`
                 )
                 .join("")
-            : `
+            : situation.type === "SITUATION"
+            ? `
               <button class="normal">${t().normal}</button>
               <button class="hmm">${t().hmm}</button>
               <button class="red">${t().red}</button>
+            `
+            : `
+              <div style="width:100%;">
+                <textarea
+                  id="questionAnswerText"
+                  rows="5"
+                  maxlength="3000"
+                  placeholder="${
+                    language === "ru"
+                      ? "Напиши своё мнение..."
+                      : language === "pl"
+                      ? "Napisz swoją opinię..."
+                      : "Write your opinion..."
+                  }"
+                  style="
+                    width:100%;
+                    box-sizing:border-box;
+                    padding:14px;
+                    border:1px solid #444;
+                    border-radius:12px;
+                    background:#171719;
+                    color:white;
+                    resize:vertical;
+                    font-family:inherit;
+                    font-size:15px;
+                    line-height:1.5;
+                  "
+                ></textarea>
+
+                <button
+                  id="submitQuestionAnswerButton"
+                  type="button"
+                  style="
+                    width:100%;
+                    margin-top:10px;
+                    padding:14px;
+                    border:none;
+                    border-radius:12px;
+                    background:#fff;
+                    color:#111;
+                    font-weight:700;
+                    cursor:pointer;
+                  "
+                >
+                  ${
+                    language === "ru"
+                      ? "Ответить"
+                      : language === "pl"
+                      ? "Odpowiedz"
+                      : "Answer"
+                  }
+                </button>
+              </div>
             `
         }
       </div>
@@ -4492,11 +4597,17 @@ function showSituation() {
             showCategoryScreen();
         });
 
-    const buttons = card.querySelectorAll(".buttons button");
+    if (situation.type === "QUESTION") {
+        document
+            .getElementById("submitQuestionAnswerButton")
+            ?.addEventListener("click", handleQuestionAnswer);
+    } else {
+        const buttons = card.querySelectorAll(".buttons button");
 
-    buttons.forEach(button => {
-        button.addEventListener("click", () => handleAnswer(button));
-    });
+        buttons.forEach(button => {
+            button.addEventListener("click", () => handleAnswer(button));
+        });
+    }
 
     renderComments(situation.id);
 }
@@ -4516,6 +4627,7 @@ async function loadAnsweredQuestionIds() {
     } = await supabaseClient.auth.getUser();
 
     let votes = [];
+    let textAnswers = [];
 
     if (user) {
         // Для авторизованного пользователя учитываем:
@@ -4554,6 +4666,38 @@ async function loadAnsweredQuestionIds() {
             ...(userVotes || []),
             ...(browserVotes || [])
         ];
+
+        const { data: userTextAnswers, error: userTextAnswersError } =
+            await supabaseClient
+                .from("question_answers")
+                .select("question_id")
+                .eq("user_id", user.id);
+
+        if (userTextAnswersError) {
+            console.error(
+                "Flagged: ошибка загрузки текстовых ответов пользователя:",
+                userTextAnswersError
+            );
+        } else {
+            textAnswers.push(...(userTextAnswers || []));
+        }
+
+        const {
+            data: browserTextAnswers,
+            error: browserTextAnswersError
+        } = await supabaseClient
+            .from("question_answers")
+            .select("question_id")
+            .eq("browser_id", flaggedBrowserId);
+
+        if (browserTextAnswersError) {
+            console.error(
+                "Flagged: ошибка загрузки текстовых ответов браузера:",
+                browserTextAnswersError
+            );
+        } else {
+            textAnswers.push(...(browserTextAnswers || []));
+        }
     } else {
         // Для гостя история остаётся привязанной к браузеру.
         const { data, error } = await supabaseClient
@@ -4571,11 +4715,29 @@ async function loadAnsweredQuestionIds() {
         }
 
         votes = data || [];
+
+        const {
+            data: browserTextAnswers,
+            error: browserTextAnswersError
+        } = await supabaseClient
+            .from("question_answers")
+            .select("question_id")
+            .eq("browser_id", flaggedBrowserId);
+
+        if (browserTextAnswersError) {
+            console.error(
+                "Flagged: ошибка загрузки текстовых ответов браузера:",
+                browserTextAnswersError
+            );
+        } else {
+            textAnswers = browserTextAnswers || [];
+        }
     }
 
-    answeredQuestionIds = new Set(
-        votes.map(vote => Number(vote.question_id))
-    );
+    answeredQuestionIds = new Set([
+        ...votes.map(vote => Number(vote.question_id)),
+        ...textAnswers.map(answer => Number(answer.question_id))
+    ]);
 
     console.log(
         "Flagged: уже отвеченные вопросы:",
@@ -4595,6 +4757,197 @@ function showNextUnansweredQuestion() {
         showAllQuestionsCompleted();
     } else {
         showSituation();
+    }
+}
+
+async function handleQuestionAnswer() {
+    const question = situations[currentIndex];
+
+    if (!question) {
+        console.error("Flagged: текущий QUESTION не найден.");
+        return;
+    }
+
+    const questionId = question.id;
+    const answerInput = document.getElementById("questionAnswerText");
+    const answerText = answerInput?.value.trim();
+
+    if (!answerText) {
+        alert(
+            language === "ru"
+                ? "Напиши ответ перед отправкой."
+                : language === "pl"
+                ? "Napisz odpowiedź przed wysłaniem."
+                : "Write an answer before submitting."
+        );
+        answerInput?.focus();
+        return;
+    }
+
+    try {
+        const {
+            data: { user }
+        } = await supabaseClient.auth.getUser();
+
+        let existingAnswer = null;
+
+        const {
+            data: browserAnswer,
+            error: browserAnswerError
+        } = await supabaseClient
+            .from("question_answers")
+            .select("id")
+            .eq("question_id", questionId)
+            .eq("browser_id", flaggedBrowserId)
+            .maybeSingle();
+
+        if (browserAnswerError) {
+            console.error(
+                "Flagged: ошибка проверки ответа QUESTION по browser_id:",
+                browserAnswerError
+            );
+            return;
+        }
+
+        existingAnswer = browserAnswer;
+
+        if (!existingAnswer && user) {
+            const {
+                data: userAnswer,
+                error: userAnswerError
+            } = await supabaseClient
+                .from("question_answers")
+                .select("id")
+                .eq("question_id", questionId)
+                .eq("user_id", user.id)
+                .maybeSingle();
+
+            if (userAnswerError) {
+                console.error(
+                    "Flagged: ошибка проверки ответа QUESTION по user_id:",
+                    userAnswerError
+                );
+                return;
+            }
+
+            existingAnswer = userAnswer;
+        }
+
+        if (existingAnswer) {
+            answeredQuestionIds.add(questionId);
+
+            card.innerHTML = `
+                <div style="font-size:20px; text-align:center; padding:40px 20px;">
+                    ❤️ ${
+                        language === "ru"
+                            ? "Ты уже отвечал(а) на этот вопрос."
+                            : language === "pl"
+                            ? "Już odpowiadałeś/aś na to pytanie."
+                            : "You have already answered this question."
+                    }
+                </div>
+            `;
+
+            setTimeout(() => {
+                currentIndex++;
+
+                if (currentIndex >= situations.length) {
+                    showAllQuestionsCompleted();
+                } else {
+                    showSituation();
+                }
+            }, 700);
+
+            return;
+        }
+
+        const answerPayload = {
+            question_id: questionId,
+            browser_id: flaggedBrowserId,
+            answer_text: answerText
+        };
+
+        if (user) {
+            answerPayload.user_id = user.id;
+        }
+
+        const { error: insertError } = await supabaseClient
+            .from("question_answers")
+            .insert(answerPayload);
+
+        if (insertError) {
+            if (insertError.code === "23505") {
+                answeredQuestionIds.add(questionId);
+
+                card.innerHTML = `
+                    <div style="font-size:20px; text-align:center; padding:40px 20px;">
+                        ❤️ ${
+                            language === "ru"
+                                ? "Ты уже отвечал(а) на этот вопрос."
+                                : language === "pl"
+                                ? "Już odpowiadałeś/aś na to pytanie."
+                                : "You have already answered this question."
+                        }
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    currentIndex++;
+
+                    if (currentIndex >= situations.length) {
+                        showAllQuestionsCompleted();
+                    } else {
+                        showSituation();
+                    }
+                }, 700);
+
+                return;
+            }
+
+            console.error(
+                "Flagged: ошибка сохранения текстового ответа:",
+                insertError
+            );
+
+            alert(
+                language === "ru"
+                    ? "Не удалось сохранить ответ."
+                    : language === "pl"
+                    ? "Nie udało się zapisać odpowiedzi."
+                    : "The answer could not be saved."
+            );
+
+            return;
+        }
+
+        answeredQuestionIds.add(questionId);
+
+        card.innerHTML = `
+            <div style="font-size:20px; text-align:center; padding:40px 20px;">
+                ❤️ ${
+                    language === "ru"
+                        ? "Ответ сохранён!"
+                        : language === "pl"
+                        ? "Odpowiedź została zapisana!"
+                        : "Answer saved!"
+                }
+            </div>
+        `;
+
+        setTimeout(() => {
+            currentIndex++;
+
+            if (currentIndex >= situations.length) {
+                showAllQuestionsCompleted();
+            } else {
+                showSituation();
+            }
+        }, 700);
+    } catch (error) {
+        console.error(
+            "Flagged: неожиданная ошибка сохранения QUESTION:",
+            error
+        );
     }
 }
 
