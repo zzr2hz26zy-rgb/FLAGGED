@@ -4897,7 +4897,7 @@ function showAllQuestionsCompleted() {
             },
             pl: {
                 title: "Wszystkie dostępne pytania zostały ukończone",
-                text: "Odpowiedziałeś już na wszystkie доступные pytania. Nowe pytania pojawią się tutaj później.",
+                text: "Odpowiedziałeś już na wszystkie dostępne pytania. Nowe pytania pojawią się tutaj później.",
                 back: "Wybierz inną kategorię"
             },
             en: {
