@@ -1310,11 +1310,33 @@ async function showQuestionComposer(editSubmissionId = null) {
       ${categoryBlock}
 
       <button
-        id="saveDraftButton"
+        id="submitQuestionButton"
         type="button"
         style="
           width:100%;
           margin-top:18px;
+          padding:14px;
+          border:none;
+          border-radius:10px;
+          cursor:pointer;
+          opacity:1;
+        "
+      >
+        ${
+          language === "ru"
+            ? "Отправить на модерацию"
+            : language === "pl"
+            ? "Wyślij do moderacji"
+            : "Submit for moderation"
+        }
+      </button>
+
+      <button
+        id="saveDraftButton"
+        type="button"
+        style="
+          width:100%;
+          margin-top:8px;
           padding:14px;
           border:none;
           border-radius:10px;
@@ -1333,28 +1355,6 @@ async function showQuestionComposer(editSubmissionId = null) {
             : language === "pl"
             ? "Zapisz jako wersję roboczą"
             : "Save as draft"
-        }
-      </button>
-
-      <button
-        id="submitQuestionButton"
-        type="button"
-        style="
-          width:100%;
-          margin-top:8px;
-          padding:14px;
-          border:none;
-          border-radius:10px;
-          cursor:pointer;
-          opacity:1;
-        "
-      >
-        ${
-          language === "ru"
-            ? "Отправить на модерацию"
-            : language === "pl"
-            ? "Wyślij do moderacji"
-            : "Submit for moderation"
         }
       </button>
 
