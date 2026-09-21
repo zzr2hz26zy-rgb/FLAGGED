@@ -4510,6 +4510,29 @@ function showSituation() {
                   "
                 ></textarea>
 
+                <label
+                  style="
+                    display:flex;
+                    align-items:center;
+                    gap:8px;
+                    margin-top:10px;
+                    font-size:13px;
+                    cursor:pointer;
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    id="questionAnswerAnonymous"
+                  >
+                  ${
+                    language === "ru"
+                      ? "Отвечать анонимно"
+                      : language === "pl"
+                      ? "Odpowiedz anonimowo"
+                      : "Answer anonymously"
+                  }
+                </label>
+
                 <button
                   id="submitQuestionAnswerButton"
                   type="button"
@@ -4797,7 +4820,7 @@ async function renderQuestionAnswers(questionId) {
 
     const { data, error } = await supabaseClient
         .from("question_answers")
-        .select("id, answer_text, created_at")
+        .select("id, answer_text, user_id, is_anonymous, created_at")
         .eq("question_id", questionId)
         .order("created_at", { ascending: false });
 
@@ -4844,27 +4867,100 @@ async function renderQuestionAnswers(questionId) {
         return;
     }
 
+    const userIds = [
+        ...new Set(
+            answers
+                .map(answer => answer.user_id)
+                .filter(Boolean)
+        )
+    ];
+
+    let profilesMap = new Map();
+
+    if (userIds.length > 0) {
+        const { data: profiles, error: profilesError } =
+            await supabaseClient
+                .from("profiles")
+                .select("id, display_name, username")
+                .in("id", userIds);
+
+        if (profilesError) {
+            console.error(
+                "Flagged: ошибка загрузки профилей ответов QUESTION:",
+                profilesError
+            );
+        } else {
+            profilesMap = new Map(
+                (profiles || []).map(profile => [
+                    String(profile.id),
+                    profile
+                ])
+            );
+        }
+    }
+
+    const escapeHtml = value =>
+        String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+
+    const anonymousLabel =
+        language === "ru"
+            ? "Аноним"
+            : language === "pl"
+            ? "Anonim"
+            : "Anonymous";
+
+    const guestLabel =
+        language === "ru"
+            ? "Гость"
+            : language === "pl"
+            ? "Gość"
+            : "Guest";
+
     list.innerHTML = answers
-        .map(
-            answer => `
+        .map(answer => {
+            let authorName = guestLabel;
+
+            if (answer.is_anonymous) {
+                authorName = anonymousLabel;
+            } else if (answer.user_id) {
+                const profile = profilesMap.get(String(answer.user_id));
+
+                authorName =
+                    profile?.display_name?.trim() ||
+                    profile?.username?.trim() ||
+                    anonymousLabel;
+            }
+
+            return `
                 <div
                     style="
                         padding:14px;
                         border:1px solid #333;
                         border-radius:12px;
                         background:#18181b;
-                        line-height:1.5;
                     "
                 >
-                    ${answer.answer_text
-                        .replace(/&/g, "&amp;")
-                        .replace(/</g, "&lt;")
-                        .replace(/>/g, "&gt;")
-                        .replace(/"/g, "&quot;")
-                        .replace(/'/g, "&#039;")}
+                    <div
+                        style="
+                            font-size:13px;
+                            font-weight:600;
+                            margin-bottom:7px;
+                        "
+                    >
+                        ${escapeHtml(authorName)}
+                    </div>
+
+                    <div style="line-height:1.5;">
+                        ${escapeHtml(answer.answer_text)}
+                    </div>
                 </div>
-            `
-        )
+            `;
+        })
         .join("");
 }
 
@@ -4970,10 +5066,21 @@ async function handleQuestionAnswer() {
             return;
         }
 
+        const detectedLanguage =
+            (await detectCommentLanguage(answerText)) || language;
+
+        const anonymousCheckbox =
+            document.getElementById("questionAnswerAnonymous");
+
+        const isAnonymous =
+            anonymousCheckbox?.checked ?? false;
+
         const answerPayload = {
             question_id: questionId,
             browser_id: flaggedBrowserId,
-            answer_text: answerText
+            answer_text: answerText,
+            original_language: detectedLanguage,
+            is_anonymous: isAnonymous
         };
 
         if (user) {
@@ -6466,3 +6573,35 @@ async function detectCommentLanguage(text) {
         return null;
     }
 }
+
+
+async function openQuestionFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const questionId = Number(params.get("question"));
+
+    if (!questionId) return;
+
+    await loadQuestionsFromSupabase("all");
+    await loadAnsweredQuestionIds();
+
+    const questionIndex = situations.findIndex(
+        question => Number(question.id) === questionId
+    );
+
+    if (questionIndex < 0) {
+        console.warn(
+            "Flagged: вопрос из URL не найден:",
+            questionId
+        );
+        return;
+    }
+
+    gameStarted = true;
+    currentIndex = questionIndex;
+    showSituation();
+}
+
+
+setTimeout(() => {
+    openQuestionFromUrl();
+}, 100);
