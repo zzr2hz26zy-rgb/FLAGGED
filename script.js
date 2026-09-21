@@ -4820,7 +4820,7 @@ async function renderQuestionAnswers(questionId) {
 
     const { data, error } = await supabaseClient
         .from("question_answers")
-        .select("id, answer_text, user_id, is_anonymous, created_at")
+        .select("id, answer_text, user_id, is_anonymous, original_language, created_at")
         .eq("question_id", questionId)
         .order("created_at", { ascending: false });
 
@@ -4938,6 +4938,7 @@ async function renderQuestionAnswers(questionId) {
 
             return `
                 <div
+                    class="question-answer-card"
                     style="
                         padding:14px;
                         border:1px solid #333;
@@ -4955,13 +4956,170 @@ async function renderQuestionAnswers(questionId) {
                         ${escapeHtml(authorName)}
                     </div>
 
-                    <div style="line-height:1.5;">
+                    <div
+                        class="question-answer-text"
+                        data-question-answer-text
+                        style="line-height:1.5;"
+                    >
                         ${escapeHtml(answer.answer_text)}
+                    </div>
+
+                    <div
+                        style="
+                            display:flex;
+                            justify-content:flex-end;
+                            margin-top:10px;
+                        "
+                    >
+                        <button
+                            type="button"
+                            class="translate-question-answer-button"
+                            data-answer-id="${answer.id}"
+                            style="
+                                padding:6px 10px;
+                                border:1px solid #444;
+                                border-radius:8px;
+                                background:transparent;
+                                color:#f4f4f7;
+                                cursor:pointer;
+                                font-size:12px;
+                            "
+                        >
+                            ${
+                                language === "ru"
+                                    ? "Перевести"
+                                    : language === "pl"
+                                    ? "Przetłumacz"
+                                    : "Translate"
+                            }
+                        </button>
                     </div>
                 </div>
             `;
         })
         .join("");
+
+    list.addEventListener("click", event => {
+        const button = event.target.closest(
+            ".translate-question-answer-button"
+        );
+
+        if (!button) return;
+
+        const answerId = Number(button.dataset.answerId);
+
+        const answer = answers.find(
+            item => Number(item.id) === answerId
+        );
+
+        if (!answer) return;
+
+        translateQuestionAnswer(answer, button);
+    });
+}
+
+
+async function translateQuestionAnswer(answer, button) {
+    if (!answer?.answer_text) return;
+
+    const targetLanguage = language;
+    const sourceLanguage = answer.original_language || "en";
+
+    if (sourceLanguage === targetLanguage) {
+        alert(
+            language === "ru"
+                ? "Ответ уже написан на вашем языке."
+                : language === "pl"
+                ? "Odpowiedź jest już napisana w Twoim języku."
+                : "The answer is already in your language."
+        );
+        return;
+    }
+
+    const card = button.closest(".question-answer-card");
+
+    if (!card) return;
+
+    const textElement = card.querySelector(
+        "[data-question-answer-text]"
+    );
+
+    if (!textElement) return;
+
+    if (button.dataset.translated === "true") {
+        textElement.textContent = answer.answer_text;
+
+        button.dataset.translated = "false";
+
+        button.textContent =
+            language === "ru"
+                ? "Перевести"
+                : language === "pl"
+                ? "Przetłumacz"
+                : "Translate";
+
+        return;
+    }
+
+    const originalLabel = button.textContent;
+
+    button.disabled = true;
+
+    button.textContent =
+        language === "ru"
+            ? "Перевод..."
+            : language === "pl"
+            ? "Tłumaczenie..."
+            : "Translating...";
+
+    try {
+        const { data, error } =
+            await supabaseClient.functions.invoke(
+                "translate-question",
+                {
+                    body: {
+                        text: answer.answer_text,
+                        source_language: sourceLanguage,
+                        target_language: targetLanguage
+                    }
+                }
+            );
+
+        if (error) throw error;
+
+        if (!data?.translated_text) {
+            throw new Error("Translation was not returned");
+        }
+
+        textElement.textContent =
+            data.translated_text;
+
+        button.dataset.translated = "true";
+
+        button.textContent =
+            language === "ru"
+                ? "Показать оригинал"
+                : language === "pl"
+                ? "Pokaż oryginał"
+                : "Show original";
+    } catch (error) {
+        console.error(
+            "Flagged: ошибка перевода ответа QUESTION:",
+            error
+        );
+
+        button.textContent = originalLabel;
+
+        alert(
+            language === "ru"
+                ? "Не удалось перевести ответ."
+                : language === "pl"
+                ? "Nie udało się przetłumaczyć odpowiedzi."
+                : "Could not translate the answer."
+        );
+    } finally {
+        button.disabled = false;
+    }
 }
 
 
