@@ -4582,6 +4582,8 @@ function showSituation() {
     </div>
 </div>
 
+<div id="questionAnswersSection" style="margin-top:28px;"></div>
+
 <div id="commentsSection" class="comments-section"></div>
     `;
 
@@ -4607,6 +4609,10 @@ function showSituation() {
         buttons.forEach(button => {
             button.addEventListener("click", () => handleAnswer(button));
         });
+    }
+
+    if (situation.type === "QUESTION") {
+        renderQuestionAnswers(situation.id);
     }
 
     renderComments(situation.id);
@@ -4759,6 +4765,109 @@ function showNextUnansweredQuestion() {
         showSituation();
     }
 }
+
+async function renderQuestionAnswers(questionId) {
+    const section = document.getElementById("questionAnswersSection");
+
+    if (!section) return;
+
+    section.innerHTML = `
+        <div>
+            <h3 style="margin-bottom:14px;">
+                ${
+                    language === "ru"
+                        ? "Ответы пользователей"
+                        : language === "pl"
+                        ? "Odpowiedzi użytkowników"
+                        : "Users' answers"
+                }
+            </h3>
+
+            <div id="questionAnswersList" style="display:flex; flex-direction:column; gap:10px;">
+                ${
+                    language === "ru"
+                        ? "Загрузка ответов..."
+                        : language === "pl"
+                        ? "Ładowanie odpowiedzi..."
+                        : "Loading answers..."
+                }
+            </div>
+        </div>
+    `;
+
+    const { data, error } = await supabaseClient
+        .from("question_answers")
+        .select("id, answer_text, created_at")
+        .eq("question_id", questionId)
+        .order("created_at", { ascending: false });
+
+    const list = document.getElementById("questionAnswersList");
+
+    if (!list) return;
+
+    if (error) {
+        console.error(
+            "Flagged: ошибка загрузки ответов QUESTION:",
+            error
+        );
+
+        list.innerHTML = `
+            <div style="opacity:0.6;">
+                ${
+                    language === "ru"
+                        ? "Не удалось загрузить ответы."
+                        : language === "pl"
+                        ? "Nie udało się załadować odpowiedzi."
+                        : "Could not load answers."
+                }
+            </div>
+        `;
+
+        return;
+    }
+
+    const answers = data || [];
+
+    if (answers.length === 0) {
+        list.innerHTML = `
+            <div style="opacity:0.6;">
+                ${
+                    language === "ru"
+                        ? "Пока нет ответов."
+                        : language === "pl"
+                        ? "Brak odpowiedzi."
+                        : "No answers yet."
+                }
+            </div>
+        `;
+
+        return;
+    }
+
+    list.innerHTML = answers
+        .map(
+            answer => `
+                <div
+                    style="
+                        padding:14px;
+                        border:1px solid #333;
+                        border-radius:12px;
+                        background:#18181b;
+                        line-height:1.5;
+                    "
+                >
+                    ${answer.answer_text
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/"/g, "&quot;")
+                        .replace(/'/g, "&#039;")}
+                </div>
+            `
+        )
+        .join("");
+}
+
 
 async function handleQuestionAnswer() {
     const question = situations[currentIndex];
