@@ -3816,6 +3816,28 @@ async function showModerationPanel() {
             <div class="question-answer-report-text">
               ${escapeProfileHtml(report.answer_text || "")}
             </div>
+
+            ${
+              report.question_id
+                ? `
+                  <div class="question-answer-report-actions">
+                    <button
+                      type="button"
+                      class="open-question-from-report-button"
+                      data-question-id="${report.question_id}"
+                    >
+                      ${
+                        language === "ru"
+                          ? "Открыть вопрос →"
+                          : language === "pl"
+                          ? "Otwórz pytanie →"
+                          : "Open question →"
+                      }
+                    </button>
+                  </div>
+                `
+                : ""
+            }
           </div>
         `;
       })
@@ -3883,6 +3905,25 @@ async function showModerationPanel() {
     `;
 
     renderReports();
+
+    document
+      .getElementById("questionAnswerReportsList")
+      ?.addEventListener("click", event => {
+        const button = event.target.closest(
+          ".open-question-from-report-button"
+        );
+
+        if (!button) return;
+
+        const questionId = Number(button.dataset.questionId);
+
+        if (!questionId) return;
+
+        const questionUrl =
+          `${window.location.origin}${window.location.pathname}?question=${questionId}`;
+
+        window.open(questionUrl, "_blank", "noopener,noreferrer");
+      });
 
     document
       .getElementById("backFromModerationButton")
@@ -3957,6 +3998,25 @@ async function showModerationPanel() {
   const list = document.getElementById("moderationList");
 
   renderReports();
+
+  document
+    .getElementById("questionAnswerReportsList")
+    ?.addEventListener("click", event => {
+      const button = event.target.closest(
+        ".open-question-from-report-button"
+      );
+
+      if (!button) return;
+
+      const questionId = Number(button.dataset.questionId);
+
+      if (!questionId) return;
+
+      const questionUrl =
+        `${window.location.origin}${window.location.pathname}?question=${questionId}`;
+
+      window.open(questionUrl, "_blank", "noopener,noreferrer");
+    });
 
   list.innerHTML = submissions
     .map(submission => {
