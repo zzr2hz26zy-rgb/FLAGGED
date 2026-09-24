@@ -3817,10 +3817,10 @@ async function showModerationPanel() {
               ${escapeProfileHtml(report.answer_text || "")}
             </div>
 
-            ${
-              report.question_id
-                ? `
-                  <div class="question-answer-report-actions">
+            <div class="question-answer-report-actions">
+              ${
+                report.question_id
+                  ? `
                     <button
                       type="button"
                       class="open-question-from-report-button"
@@ -3834,10 +3834,38 @@ async function showModerationPanel() {
                           : "Open question →"
                       }
                     </button>
-                  </div>
-                `
-                : ""
-            }
+                  `
+                  : ""
+              }
+
+              <button
+                type="button"
+                class="hide-question-answer-report-button"
+                data-report-id="${report.id}"
+              >
+                ${
+                  language === "ru"
+                    ? "🚫 Скрыть ответ"
+                    : language === "pl"
+                    ? "🚫 Ukryj odpowiedź"
+                    : "🚫 Hide answer"
+                }
+              </button>
+
+              <button
+                type="button"
+                class="dismiss-question-answer-report-button"
+                data-report-id="${report.id}"
+              >
+                ${
+                  language === "ru"
+                    ? "✓ Отклонить жалобу"
+                    : language === "pl"
+                    ? "✓ Odrzuć zgłoszenie"
+                    : "✓ Dismiss report"
+                }
+              </button>
+            </div>
           </div>
         `;
       })
@@ -3908,21 +3936,91 @@ async function showModerationPanel() {
 
     document
       .getElementById("questionAnswerReportsList")
-      ?.addEventListener("click", event => {
-        const button = event.target.closest(
+      ?.addEventListener("click", async event => {
+        const openButton = event.target.closest(
           ".open-question-from-report-button"
         );
 
-        if (!button) return;
+        if (openButton) {
+          const questionId = Number(openButton.dataset.questionId);
 
-        const questionId = Number(button.dataset.questionId);
+          if (!questionId) return;
 
-        if (!questionId) return;
+          const questionUrl =
+            `${window.location.origin}${window.location.pathname}?question=${questionId}`;
 
-        const questionUrl =
-          `${window.location.origin}${window.location.pathname}?question=${questionId}`;
+          window.open(questionUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
 
-        window.open(questionUrl, "_blank", "noopener,noreferrer");
+        const hideButton = event.target.closest(
+          ".hide-question-answer-report-button"
+        );
+
+        const dismissButton = event.target.closest(
+          ".dismiss-question-answer-report-button"
+        );
+
+        if (!hideButton && !dismissButton) return;
+
+        const actionButton = hideButton || dismissButton;
+        const reportId = Number(actionButton.dataset.reportId);
+
+        if (!reportId) return;
+
+        const originalText = actionButton.textContent;
+        actionButton.disabled = true;
+        actionButton.textContent =
+          language === "ru"
+            ? "Обработка..."
+            : language === "pl"
+            ? "Przetwarzanie..."
+            : "Processing...";
+
+        const rpcName = hideButton
+          ? "hide_question_answer_report"
+          : "dismiss_question_answer_report";
+
+        const { data, error } = await supabaseClient.rpc(
+          rpcName,
+          {
+            p_report_id: reportId
+          }
+        );
+
+        if (error) {
+          console.error("Ошибка обработки жалобы:", error);
+
+          actionButton.disabled = false;
+          actionButton.textContent = originalText;
+
+          alert(
+            language === "ru"
+              ? "Не удалось обработать жалобу."
+              : language === "pl"
+              ? "Nie udało się rozpatrzyć zgłoszenia."
+              : "Could not resolve the report."
+          );
+
+          return;
+        }
+
+        if (!data) {
+          actionButton.disabled = false;
+          actionButton.textContent = originalText;
+
+          alert(
+            language === "ru"
+              ? "Жалоба уже была обработана или не найдена."
+              : language === "pl"
+              ? "Zgłoszenie zostało już rozpatrzone lub nie zostało znalezione."
+              : "The report was already resolved or was not found."
+          );
+
+          return;
+        }
+
+        showModerationPanel();
       });
 
     document
@@ -4001,21 +4099,92 @@ async function showModerationPanel() {
 
   document
     .getElementById("questionAnswerReportsList")
-    ?.addEventListener("click", event => {
-      const button = event.target.closest(
+    ?.addEventListener("click", async event => {
+      const openButton = event.target.closest(
         ".open-question-from-report-button"
       );
 
-      if (!button) return;
+      if (openButton) {
+        const questionId = Number(openButton.dataset.questionId);
 
-      const questionId = Number(button.dataset.questionId);
+        if (!questionId) return;
 
-      if (!questionId) return;
+        const questionUrl =
+          `${window.location.origin}${window.location.pathname}?question=${questionId}`;
 
-      const questionUrl =
-        `${window.location.origin}${window.location.pathname}?question=${questionId}`;
+        window.open(questionUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
 
-      window.open(questionUrl, "_blank", "noopener,noreferrer");
+      const hideButton = event.target.closest(
+        ".hide-question-answer-report-button"
+      );
+
+      const dismissButton = event.target.closest(
+        ".dismiss-question-answer-report-button"
+      );
+
+      if (!hideButton && !dismissButton) return;
+
+      const actionButton = hideButton || dismissButton;
+      const reportId = Number(actionButton.dataset.reportId);
+
+      if (!reportId) return;
+
+      const originalText = actionButton.textContent;
+
+      actionButton.disabled = true;
+      actionButton.textContent =
+        language === "ru"
+          ? "Обработка..."
+          : language === "pl"
+          ? "Przetwarzanie..."
+          : "Processing...";
+
+      const rpcName = hideButton
+        ? "hide_question_answer_report"
+        : "dismiss_question_answer_report";
+
+      const { data, error } = await supabaseClient.rpc(
+        rpcName,
+        {
+          p_report_id: reportId
+        }
+      );
+
+      if (error) {
+        console.error("Ошибка обработки жалобы:", error);
+
+        actionButton.disabled = false;
+        actionButton.textContent = originalText;
+
+        alert(
+          language === "ru"
+            ? "Не удалось обработать жалобу."
+            : language === "pl"
+            ? "Nie udało się rozpatrzyć zgłoszenia."
+            : "Could not resolve the report."
+        );
+
+        return;
+      }
+
+      if (!data) {
+        actionButton.disabled = false;
+        actionButton.textContent = originalText;
+
+        alert(
+          language === "ru"
+            ? "Жалоба уже была обработана или не найдена."
+            : language === "pl"
+            ? "Zgłoszenie zostało już rozpatrzone lub nie zostało znalezione."
+            : "The report was already resolved or was not found."
+        );
+
+        return;
+      }
+
+      showModerationPanel();
     });
 
   list.innerHTML = submissions
@@ -5232,6 +5401,7 @@ async function renderQuestionAnswers(questionId) {
         .from("question_answers")
         .select("id, answer_text, user_id, is_anonymous, original_language, created_at")
         .eq("question_id", questionId)
+        .eq("moderation_status", "VISIBLE")
         .order("created_at", { ascending: false });
 
     const list = document.getElementById("questionAnswersList");
