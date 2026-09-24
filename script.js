@@ -3678,12 +3678,16 @@ async function initModerationAccess() {
 
 
 async function showModerationPanel() {
-  const { data, error } = await supabaseClient.rpc(
-    "get_pending_question_submissions"
-  );
+  const [
+    { data: submissionsData, error: submissionsError },
+    { data: reportsData, error: reportsError }
+  ] = await Promise.all([
+    supabaseClient.rpc("get_pending_question_submissions"),
+    supabaseClient.rpc("get_question_answer_reports")
+  ]);
 
-  if (error) {
-    console.error("Ошибка загрузки очереди модерации:", error);
+  if (submissionsError) {
+    console.error("Ошибка загрузки очереди модерации:", submissionsError);
 
     alert(
       language === "ru"
@@ -3695,9 +3699,130 @@ async function showModerationPanel() {
     return;
   }
 
-  const submissions = Array.isArray(data) ? data : [];
+  if (reportsError) {
+    console.error("Ошибка загрузки жалоб на ответы:", reportsError);
+  }
 
-  if (submissions.length === 0) {
+  const submissions = Array.isArray(submissionsData) ? submissionsData : [];
+  const reports = Array.isArray(reportsData) ? reportsData : [];
+
+  console.log("Flagged: жалоб на ответы:", reports.length);
+
+  const renderReports = () => {
+    const reportList = document.getElementById("questionAnswerReportsList");
+    if (!reportList) return;
+
+    if (reports.length === 0) {
+      reportList.innerHTML = `
+        <p style="opacity:0.7; text-align:center;">
+          ${
+            language === "ru"
+              ? "Жалоб пока нет."
+              : language === "pl"
+              ? "Brak zgłoszeń."
+              : "No reports yet."
+          }
+        </p>
+      `;
+      return;
+    }
+
+    const reasonLabels = {
+      ru: {
+        spam: "Спам",
+        offensive: "Оскорбление",
+        harassment: "Преследование",
+        hate: "Ненависть",
+        sexual: "Сексуальный контент",
+        other: "Другое"
+      },
+      pl: {
+        spam: "Spam",
+        offensive: "Obraźliwe treści",
+        harassment: "Nękanie",
+        hate: "Nienawiść",
+        sexual: "Treści seksualne",
+        other: "Inne"
+      },
+      en: {
+        spam: "Spam",
+        offensive: "Offensive content",
+        harassment: "Harassment",
+        hate: "Hate",
+        sexual: "Sexual content",
+        other: "Other"
+      }
+    };
+
+    const labels = reasonLabels[language] || reasonLabels.en;
+
+    reportList.innerHTML = reports
+      .map(report => {
+        const createdAt = report.created_at
+          ? new Date(report.created_at).toLocaleString(
+              language === "ru"
+                ? "ru-RU"
+                : language === "pl"
+                ? "pl-PL"
+                : "en-GB",
+              {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              }
+            )
+          : "—";
+
+        return `
+          <div class="question-answer-report-card">
+            <div class="question-answer-report-meta">
+              <span class="moderation-badge">
+                🚩 ${
+                  labels[report.reason] ||
+                  report.reason ||
+                  "—"
+              }
+              </span>
+
+              <span class="moderation-badge">
+                #${report.answer_id}
+              </span>
+
+              <span class="moderation-badge">
+                ${
+                  report.question_id
+                    ? `Question #${report.question_id}`
+                    : "—"
+                }
+              </span>
+
+              <span class="moderation-badge">
+                ${createdAt}
+              </span>
+            </div>
+
+            <div class="question-answer-report-label">
+              ${
+                language === "ru"
+                  ? "Ответ:"
+                  : language === "pl"
+                  ? "Odpowiedź:"
+                  : "Answer:"
+              }
+            </div>
+
+            <div class="question-answer-report-text">
+              ${escapeProfileHtml(report.answer_text || "")}
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+  };
+
+  if (submissions.length === 0 && reports.length === 0) {
     card.innerHTML = `
       <div class="category">FLAGGED</div>
 
@@ -3721,6 +3846,20 @@ async function showModerationPanel() {
         }
       </p>
 
+      <section style="margin-top:24px;">
+        <h3 style="margin-bottom:12px;">
+          ${
+            language === "ru"
+              ? `Жалобы на ответы · ${reports.length}`
+              : language === "pl"
+              ? `Zgłoszenia odpowiedzi · ${reports.length}`
+              : `Answer reports · ${reports.length}`
+          }
+        </h3>
+
+        <div id="questionAnswerReportsList"></div>
+      </section>
+
       <button
         id="backFromModerationButton"
         type="button"
@@ -3742,6 +3881,8 @@ async function showModerationPanel() {
         }
       </button>
     `;
+
+    renderReports();
 
     document
       .getElementById("backFromModerationButton")
@@ -3777,6 +3918,20 @@ async function showModerationPanel() {
 
     <div id="moderationList"></div>
 
+    <section style="margin-top:24px;">
+      <h3 style="margin-bottom:12px;">
+        ${
+          language === "ru"
+            ? `Жалобы на ответы · ${reports.length}`
+            : language === "pl"
+            ? `Zgłoszenia odpowiedzi · ${reports.length}`
+            : `Answer reports · ${reports.length}`
+        }
+      </h3>
+
+      <div id="questionAnswerReportsList"></div>
+    </section>
+
     <button
       id="backFromModerationButton"
       type="button"
@@ -3800,6 +3955,8 @@ async function showModerationPanel() {
   `;
 
   const list = document.getElementById("moderationList");
+
+  renderReports();
 
   list.innerHTML = submissions
     .map(submission => {
