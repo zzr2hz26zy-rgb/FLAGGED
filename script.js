@@ -4789,14 +4789,174 @@ function showNextUnansweredQuestion() {
     }
 }
 
+let questionAnswersSort = "newest";
+
+
+function showReportReasonModal() {
+    return new Promise(resolve => {
+        const labels = {
+            ru: {
+                title: "Пожаловаться на ответ",
+                subtitle: "Выберите причину жалобы",
+                reasons: {
+                    spam: "Спам",
+                    offensive: "Оскорбление",
+                    harassment: "Преследование",
+                    hate: "Ненависть",
+                    sexual: "Сексуальный контент",
+                    other: "Другое"
+                },
+                cancel: "Отмена",
+                report: "Пожаловаться"
+            },
+            pl: {
+                title: "Zgłoś odpowiedź",
+                subtitle: "Wybierz powód zgłoszenia",
+                reasons: {
+                    spam: "Spam",
+                    offensive: "Obraźliwe treści",
+                    harassment: "Nękanie",
+                    hate: "Nienawiść",
+                    sexual: "Treści seksualne",
+                    other: "Inne"
+                },
+                cancel: "Anuluj",
+                report: "Zgłoś"
+            },
+            en: {
+                title: "Report answer",
+                subtitle: "Choose a reason",
+                reasons: {
+                    spam: "Spam",
+                    offensive: "Offensive content",
+                    harassment: "Harassment",
+                    hate: "Hate",
+                    sexual: "Sexual content",
+                    other: "Other"
+                },
+                cancel: "Cancel",
+                report: "Report"
+            }
+        };
+
+        const text = labels[language] || labels.en;
+
+        const overlay = document.createElement("div");
+        overlay.className = "report-modal-overlay";
+
+        overlay.innerHTML = `
+            <div
+                class="report-modal"
+                role="dialog"
+                aria-modal="true"
+            >
+                <div class="report-modal-title">
+                    ${text.title}
+                </div>
+
+                <div class="report-modal-subtitle">
+                    ${text.subtitle}
+                </div>
+
+                <div class="report-modal-reasons">
+                    ${Object.entries(text.reasons)
+                        .map(
+                            ([value, label]) => `
+                                <label class="report-modal-option">
+                                    <input
+                                        type="radio"
+                                        name="reportReason"
+                                        value="${value}"
+                                    >
+                                    <span>${label}</span>
+                                </label>
+                            `
+                        )
+                        .join("")}
+                </div>
+
+                <div class="report-modal-actions">
+                    <button
+                        type="button"
+                        class="report-modal-cancel"
+                    >
+                        ${text.cancel}
+                    </button>
+
+                    <button
+                        type="button"
+                        class="report-modal-submit"
+                        disabled
+                    >
+                        ${text.report}
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const modal = overlay.querySelector(".report-modal");
+        const submitButton = overlay.querySelector(".report-modal-submit");
+        const cancelButton = overlay.querySelector(".report-modal-cancel");
+        const radios = overlay.querySelectorAll(
+            'input[name="reportReason"]'
+        );
+
+        const close = value => {
+            overlay.remove();
+            document.removeEventListener("keydown", handleKeydown);
+            resolve(value);
+        };
+
+        const handleKeydown = event => {
+            if (event.key === "Escape") {
+                close(null);
+            }
+        };
+
+        radios.forEach(radio => {
+            radio.addEventListener("change", () => {
+                submitButton.disabled = false;
+            });
+        });
+
+        submitButton.addEventListener("click", () => {
+            const selected = overlay.querySelector(
+                'input[name="reportReason"]:checked'
+            );
+
+            close(selected ? selected.value : null);
+        });
+
+        cancelButton.addEventListener("click", () => {
+            close(null);
+        });
+
+        overlay.addEventListener("click", event => {
+            if (event.target === overlay) {
+                close(null);
+            }
+        });
+
+        document.addEventListener("keydown", handleKeydown);
+
+        overlay.classList.add("is-visible");
+    });
+}
+
 async function renderQuestionAnswers(questionId) {
     const section = document.getElementById("questionAnswersSection");
 
     if (!section) return;
 
+    const {
+        data: { user }
+    } = await supabaseClient.auth.getUser();
+
     section.innerHTML = `
         <div>
-            <h3 style="margin-bottom:14px;">
+            <h3 id="questionAnswersTitle" style="margin-bottom:14px;">
                 ${
                     language === "ru"
                         ? "Ответы пользователей"
@@ -4805,6 +4965,39 @@ async function renderQuestionAnswers(questionId) {
                         : "Users' answers"
                 }
             </h3>
+
+            <div class="question-answers-sort">
+                <label for="questionAnswersSort">
+                    ${
+                        language === "ru"
+                            ? "Сортировка:"
+                            : language === "pl"
+                            ? "Sortowanie:"
+                            : "Sort:"
+                    }
+                </label>
+
+                <select id="questionAnswersSort">
+                    <option value="newest">
+                        ${
+                            language === "ru"
+                                ? "Новые"
+                                : language === "pl"
+                                ? "Najnowsze"
+                                : "Newest"
+                        }
+                    </option>
+                    <option value="oldest">
+                        ${
+                            language === "ru"
+                                ? "Старые"
+                                : language === "pl"
+                                ? "Najstarsze"
+                                : "Oldest"
+                        }
+                    </option>
+                </select>
+            </div>
 
             <div id="questionAnswersList" style="display:flex; flex-direction:column; gap:10px;">
                 ${
@@ -4850,6 +5043,39 @@ async function renderQuestionAnswers(questionId) {
     }
 
     const answers = data || [];
+
+    const sortSelect = document.getElementById("questionAnswersSort");
+
+    if (sortSelect) {
+        sortSelect.value = questionAnswersSort;
+
+        sortSelect.addEventListener("change", event => {
+            questionAnswersSort = event.target.value;
+            renderQuestionAnswers(questionId);
+        });
+    }
+
+    const selectedSort = questionAnswersSort;
+
+    const sortedAnswers = [...answers].sort((a, b) => {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+
+        return selectedSort === "oldest"
+            ? dateA - dateB
+            : dateB - dateA;
+    });
+
+    const title = document.getElementById("questionAnswersTitle");
+
+    if (title) {
+        title.textContent =
+            language === "ru"
+                ? `Ответы пользователей · ${answers.length}`
+                : language === "pl"
+                ? `Odpowiedzi użytkowników · ${answers.length}`
+                : `Users' answers · ${answers.length}`;
+    }
 
     if (answers.length === 0) {
         list.innerHTML = `
@@ -4921,8 +5147,10 @@ async function renderQuestionAnswers(questionId) {
             ? "Gość"
             : "Guest";
 
-    list.innerHTML = answers
-        .map(answer => {
+    const visibleAnswersCount = 3;
+
+    list.innerHTML = sortedAnswers
+        .map((answer, index) => {
             let authorName = guestLabel;
 
             if (answer.is_anonymous) {
@@ -4936,54 +5164,29 @@ async function renderQuestionAnswers(questionId) {
                     anonymousLabel;
             }
 
+            const hiddenClass =
+                index >= visibleAnswersCount
+                    ? " question-answer-hidden"
+                    : "";
+
             return `
-                <div
-                    class="question-answer-card"
-                    style="
-                        padding:14px;
-                        border:1px solid #333;
-                        border-radius:12px;
-                        background:#18181b;
-                    "
-                >
-                    <div
-                        style="
-                            font-size:13px;
-                            font-weight:600;
-                            margin-bottom:7px;
-                        "
-                    >
+                <div class="question-answer-card${hiddenClass}">
+                    <div class="question-answer-author">
                         ${escapeHtml(authorName)}
                     </div>
 
                     <div
                         class="question-answer-text"
                         data-question-answer-text
-                        style="line-height:1.5;"
                     >
                         ${escapeHtml(answer.answer_text)}
                     </div>
 
-                    <div
-                        style="
-                            display:flex;
-                            justify-content:flex-end;
-                            margin-top:10px;
-                        "
-                    >
+                    <div class="question-answer-actions">
                         <button
                             type="button"
                             class="translate-question-answer-button"
                             data-answer-id="${answer.id}"
-                            style="
-                                padding:6px 10px;
-                                border:1px solid #444;
-                                border-radius:8px;
-                                background:transparent;
-                                color:#f4f4f7;
-                                cursor:pointer;
-                                font-size:12px;
-                            "
                         >
                             ${
                                 language === "ru"
@@ -4993,13 +5196,199 @@ async function renderQuestionAnswers(questionId) {
                                     : "Translate"
                             }
                         </button>
+
+                        ${
+                            user && answer.user_id === user.id
+                                ? `
+                                    <button
+                                        type="button"
+                                        class="delete-question-answer-button"
+                                        data-answer-id="${answer.id}"
+                                    >
+                                        ${
+                                            language === "ru"
+                                                ? "Удалить"
+                                                : language === "pl"
+                                                ? "Usuń"
+                                                : "Delete"
+                                        }
+                                    </button>
+                                `
+                                : user
+                                ? `
+                                    <button
+                                        type="button"
+                                        class="report-question-answer-button"
+                                        data-answer-id="${answer.id}"
+                                    >
+                                        ${
+                                            language === "ru"
+                                                ? "Пожаловаться"
+                                                : language === "pl"
+                                                ? "Zgłoś"
+                                                : "Report"
+                                        }
+                                    </button>
+                                `
+                                : ""
+                        }
                     </div>
                 </div>
             `;
         })
         .join("");
 
-    list.addEventListener("click", event => {
+    if (answers.length > visibleAnswersCount) {
+        const showMoreButton = document.createElement("button");
+
+        showMoreButton.type = "button";
+        showMoreButton.className = "question-answers-show-more";
+        showMoreButton.textContent =
+            language === "ru"
+                ? "Показать ещё"
+                : language === "pl"
+                ? "Pokaż więcej"
+                : "Show more";
+
+        showMoreButton.addEventListener("click", () => {
+            list
+                .querySelectorAll(".question-answer-hidden")
+                .forEach(card => {
+                    card.classList.remove("question-answer-hidden");
+                });
+
+            showMoreButton.remove();
+        });
+
+        list.appendChild(showMoreButton);
+    }
+
+    list.addEventListener("click", async event => {
+        const deleteButton = event.target.closest(
+            ".delete-question-answer-button"
+        );
+
+        if (deleteButton) {
+            const answerId = Number(deleteButton.dataset.answerId);
+
+            const answer = answers.find(
+                item => Number(item.id) === answerId
+            );
+
+            if (!answer || !user || answer.user_id !== user.id) {
+                return;
+            }
+
+            const confirmed = confirm(
+                language === "ru"
+                    ? "Удалить этот ответ?"
+                    : language === "pl"
+                    ? "Usunąć tę odpowiedź?"
+                    : "Delete this answer?"
+            );
+
+            if (!confirmed) return;
+
+            deleteButton.disabled = true;
+
+            const { error: deleteError } = await supabaseClient
+                .from("question_answers")
+                .delete()
+                .eq("id", answerId)
+                .eq("user_id", user.id);
+
+            if (deleteError) {
+                console.error(
+                    "Flagged: ошибка удаления ответа QUESTION:",
+                    deleteError
+                );
+
+                deleteButton.disabled = false;
+
+                alert(
+                    language === "ru"
+                        ? "Не удалось удалить ответ."
+                        : language === "pl"
+                        ? "Nie udało się usunąć odpowiedzi."
+                        : "Could not delete the answer."
+                );
+
+                return;
+            }
+
+            await renderQuestionAnswers(questionId);
+            return;
+        }
+
+        const reportButton = event.target.closest(
+            ".report-question-answer-button"
+        );
+
+        if (reportButton) {
+            const answerId = Number(reportButton.dataset.answerId);
+
+            const answer = answers.find(
+                item => Number(item.id) === answerId
+            );
+
+            if (!answer || !user || answer.user_id === user.id) {
+                return;
+            }
+
+            const reason = await showReportReasonModal();
+
+            if (!reason) return;
+
+            reportButton.disabled = true;
+
+            const { error: reportError } = await supabaseClient
+                .from("question_answer_reports")
+                .insert({
+                    answer_id: answerId,
+                    reporter_user_id: user.id,
+                    reason: reason
+                });
+
+            if (reportError) {
+                console.error(
+                    "Flagged: ошибка отправки жалобы:",
+                    reportError
+                );
+
+                reportButton.disabled = false;
+
+                if (reportError.code === "23505") {
+                    alert(
+                        language === "ru"
+                            ? "Вы уже пожаловались на этот ответ."
+                            : language === "pl"
+                            ? "Już zgłosiłeś tę odpowiedź."
+                            : "You have already reported this answer."
+                    );
+                } else {
+                    alert(
+                        language === "ru"
+                            ? "Не удалось отправить жалобу."
+                            : language === "pl"
+                            ? "Nie udało się wysłać zgłoszenia."
+                            : "Could not submit the report."
+                    );
+                }
+
+                return;
+            }
+
+            alert(
+                language === "ru"
+                    ? "Жалоба отправлена. Спасибо."
+                    : language === "pl"
+                    ? "Zgłoszenie zostało wysłane. Dziękujemy."
+                    : "Report submitted. Thank you."
+            );
+
+            return;
+        }
+
         const button = event.target.closest(
             ".translate-question-answer-button"
         );
