@@ -2442,13 +2442,17 @@ async function showProfileDashboard() {
                     : "Published"
         },
         {
-            value: comments.length,
+            value: new Set(
+                comments
+                    .map(comment => Number(comment.question_id))
+                    .filter(Boolean)
+            ).size,
             label:
                 language === "ru"
-                    ? "Комментариев"
+                    ? "Обсуждений"
                     : language === "pl"
-                    ? "Komentarzy"
-                    : "Comments"
+                    ? "Dyskusji"
+                    : "Discussions"
         }
     ];
 
@@ -2730,8 +2734,24 @@ async function showProfileDashboard() {
                 })
                 .join("");
 
+    const discussionMap = new Map();
+
+    comments.forEach(comment => {
+        const questionId = Number(comment.question_id);
+
+        if (!questionId) return;
+
+        if (!discussionMap.has(questionId)) {
+            discussionMap.set(questionId, []);
+        }
+
+        discussionMap.get(questionId).push(comment);
+    });
+
+    const discussions = [...discussionMap.entries()];
+
     const myCommentsHtml =
-        comments.length === 0
+        discussions.length === 0
             ? `
                 <div style="
                     color:#777;
@@ -2740,42 +2760,63 @@ async function showProfileDashboard() {
                 ">
                     ${
                         language === "ru"
-                            ? "Вы ещё не оставляли комментариев."
+                            ? "Вы ещё не участвовали в обсуждениях."
                             : language === "pl"
-                            ? "Nie dodałeś jeszcze żadnych komentarzy."
-                            : "You have not posted any comments yet."
+                            ? "Nie brałeś jeszcze udziału w żadnych dyskusjach."
+                            : "You have not participated in any discussions yet."
                     }
                 </div>
             `
-            : comments
+            : discussions
                 .slice(0, 50)
-                .map(comment => {
-                    const question = questionMap.get(comment.question_id);
+                .map(([questionId, discussionComments]) => {
+                    const question = questionMap.get(questionId);
+                    const latestComment = discussionComments[0];
+                    const commentCount = discussionComments.length;
+
+                    const commentsLabel =
+                        language === "ru"
+                            ? commentCount === 1
+                                ? "1 комментарий"
+                                : commentCount < 5
+                                ? `${commentCount} комментария`
+                                : `${commentCount} комментариев`
+                            : language === "pl"
+                            ? commentCount === 1
+                                ? "1 komentarz"
+                                : "Komentarzy: " + commentCount
+                            : commentCount === 1
+                            ? "1 comment"
+                            : `${commentCount} comments`;
 
                     return `
-                        <div style="
-                            padding:14px;
-                            border:1px solid #333;
-                            border-radius:12px;
-                            background:#171719;
-                            margin-top:10px;
-                        ">
+                        <div
+                            data-discussion-question-id="${questionId}"
+                            style="
+                                padding:14px;
+                                border:1px solid #333;
+                                border-radius:12px;
+                                background:#171719;
+                                margin-top:10px;
+                                cursor:pointer;
+                            "
+                        >
                             <div style="
                                 color:#777;
                                 font-size:12px;
                             ">
                                 ${
                                     language === "ru"
-                                        ? "На вопрос:"
+                                        ? "Обсуждение"
                                         : language === "pl"
-                                        ? "Przy pytaniu:"
-                                        : "On question:"
+                                        ? "Dyskusja"
+                                        : "Discussion"
                                 }
                             </div>
 
                             <div style="
                                 margin-top:5px;
-                                color:#aaa;
+                                color:#f4f4f7;
                                 line-height:1.45;
                             ">
                                 ${escapeProfileHtml(
@@ -2785,18 +2826,26 @@ async function showProfileDashboard() {
 
                             <div style="
                                 margin-top:10px;
-                                color:#f4f4f7;
-                                line-height:1.5;
+                                color:#aaa;
+                                font-size:13px;
                             ">
-                                ${escapeProfileHtml(comment.body)}
+                                ${commentsLabel}
                             </div>
 
                             <div style="
                                 margin-top:8px;
-                                color:#777;
+                                color:#888;
+                                line-height:1.45;
+                            ">
+                                ${escapeProfileHtml(latestComment.body)}
+                            </div>
+
+                            <div style="
+                                margin-top:8px;
+                                color:#666;
                                 font-size:12px;
                             ">
-                                ${formatProfileDate(comment.created_at)}
+                                ${formatProfileDate(latestComment.created_at)}
                             </div>
                         </div>
                     `;
@@ -2969,10 +3018,10 @@ async function showProfileDashboard() {
 
         comments:
             language === "ru"
-                ? "Мои комментарии"
+                ? "Мои обсуждения"
                 : language === "pl"
-                ? "Moje komentarze"
-                : "My comments"
+                ? "Moje dyskusje"
+                : "My discussions"
     };
 
     const openProfileSection = async sectionKey => {
@@ -3139,6 +3188,38 @@ async function showProfileDashboard() {
             document
                 .getElementById("profileDashboardMain")
                 ?.style.setProperty("display", "block");
+        });
+
+    document
+        .getElementById("profileDetailScreen")
+        ?.addEventListener("click", event => {
+            const card = event.target.closest(
+                "[data-discussion-question-id]"
+            );
+
+            if (!card) return;
+
+            const questionId = Number(
+                card.dataset.discussionQuestionId
+            );
+
+            if (!questionId) return;
+
+            window.history.pushState(
+                {},
+                "",
+                `?question=${questionId}&discussion=1`
+            );
+
+            document.getElementById("profileDetailScreen").style.display =
+                "none";
+
+            document
+                .getElementById("profileDashboardMain")
+                ?.style.setProperty("display", "none");
+
+            gameStarted = true;
+            openQuestionFromUrl();
         });
 
     document
@@ -5342,57 +5423,75 @@ async function renderQuestionAnswers(questionId) {
 
     section.innerHTML = `
         <div>
-            <h3 id="questionAnswersTitle" style="margin-bottom:14px;">
-                ${
-                    language === "ru"
-                        ? "Ответы пользователей"
-                        : language === "pl"
-                        ? "Odpowiedzi użytkowników"
-                        : "Users' answers"
-                }
-            </h3>
-
-            <div class="question-answers-sort">
-                <label for="questionAnswersSort">
+            <button
+                id="questionAnswersToggle"
+                type="button"
+                style="
+                    width:100%;
+                    text-align:left;
+                    background:#171719;
+                    border:1px solid #333;
+                    border-radius:12px;
+                    padding:14px 16px;
+                    color:inherit;
+                    font-size:16px;
+                    cursor:pointer;
+                "
+            >
+                <span id="questionAnswersTitle">
                     ${
                         language === "ru"
-                            ? "Сортировка:"
+                            ? "Ответы пользователей"
                             : language === "pl"
-                            ? "Sortowanie:"
-                            : "Sort:"
+                            ? "Odpowiedzi użytkowników"
+                            : "Users' answers"
                     }
-                </label>
+                </span>
+            </button>
 
-                <select id="questionAnswersSort">
-                    <option value="newest">
+            <div id="questionAnswersContent" style="display:none; margin-top:14px;">
+                <div class="question-answers-sort">
+                    <label for="questionAnswersSort">
                         ${
                             language === "ru"
-                                ? "Новые"
+                                ? "Сортировка:"
                                 : language === "pl"
-                                ? "Najnowsze"
-                                : "Newest"
+                                ? "Sortowanie:"
+                                : "Sort:"
                         }
-                    </option>
-                    <option value="oldest">
-                        ${
-                            language === "ru"
-                                ? "Старые"
-                                : language === "pl"
-                                ? "Najstarsze"
-                                : "Oldest"
-                        }
-                    </option>
-                </select>
-            </div>
+                    </label>
 
-            <div id="questionAnswersList" style="display:flex; flex-direction:column; gap:10px;">
-                ${
-                    language === "ru"
-                        ? "Загрузка ответов..."
-                        : language === "pl"
-                        ? "Ładowanie odpowiedzi..."
-                        : "Loading answers..."
-                }
+                    <select id="questionAnswersSort">
+                        <option value="newest">
+                            ${
+                                language === "ru"
+                                    ? "Новые"
+                                    : language === "pl"
+                                    ? "Najnowsze"
+                                    : "Newest"
+                            }
+                        </option>
+                        <option value="oldest">
+                            ${
+                                language === "ru"
+                                    ? "Старые"
+                                    : language === "pl"
+                                    ? "Najstarsze"
+                                    : "Oldest"
+                            }
+                        </option>
+                    </select>
+                </div>
+
+                <div id="questionAnswersList" style="display:flex; flex-direction:column; gap:10px;">
+                    ${
+                        language === "ru"
+                            ? "Загрузка ответов..."
+                            : language === "pl"
+                            ? "Ładowanie odpowiedzi..."
+                            : "Loading answers..."
+                    }
+                </div>
             </div>
         </div>
     `;
@@ -5431,6 +5530,28 @@ async function renderQuestionAnswers(questionId) {
 
     const answers = data || [];
 
+    const answersToggle = document.getElementById("questionAnswersToggle");
+    const answersContent = document.getElementById("questionAnswersContent");
+
+    if (answersToggle && answersContent) {
+        answersToggle.addEventListener("click", () => {
+            const isOpen = answersContent.style.display !== "none";
+
+            answersContent.style.display = isOpen ? "none" : "block";
+
+            const title = document.getElementById("questionAnswersTitle");
+
+            if (title) {
+                title.textContent =
+                    language === "ru"
+                        ? `Ответы пользователей · ${answers.length} ${isOpen ? "▶" : "▼"}`
+                        : language === "pl"
+                        ? `Odpowiedzi użytkowników · ${answers.length} ${isOpen ? "▶" : "▼"}`
+                        : `Users' answers · ${answers.length} ${isOpen ? "▶" : "▼"}`;
+            }
+        });
+    }
+
     const sortSelect = document.getElementById("questionAnswersSort");
 
     if (sortSelect) {
@@ -5458,10 +5579,10 @@ async function renderQuestionAnswers(questionId) {
     if (title) {
         title.textContent =
             language === "ru"
-                ? `Ответы пользователей · ${answers.length}`
+                ? `Ответы пользователей · ${answers.length} ▶`
                 : language === "pl"
-                ? `Odpowiedzi użytkowników · ${answers.length}`
-                : `Users' answers · ${answers.length}`;
+                ? `Odpowiedzi użytkowników · ${answers.length} ▶`
+                : `Users' answers · ${answers.length} ▶`;
     }
 
     if (answers.length === 0) {
@@ -6073,7 +6194,7 @@ async function handleQuestionAnswer() {
         answeredQuestionIds.add(questionId);
 
         card.innerHTML = `
-            <div style="font-size:20px; text-align:center; padding:40px 20px;">
+            <div style="font-size:20px; text-align:center; padding:30px 20px 10px;">
                 ❤️ ${
                     language === "ru"
                         ? "Ответ сохранён!"
@@ -6082,9 +6203,28 @@ async function handleQuestionAnswer() {
                         : "Answer saved!"
                 }
             </div>
+
+            <div id="questionAnswersSection" style="margin-top:28px;"></div>
+
+            <div id="commentsSection" class="comments-section"></div>
+
+            <button class="next-button" style="margin-top:28px;">
+                ${
+                    language === "ru"
+                        ? "Дальше"
+                        : language === "pl"
+                        ? "Dalej"
+                        : "Next"
+                }
+            </button>
         `;
 
-        setTimeout(() => {
+        await renderQuestionAnswers(questionId);
+        await renderComments(questionId);
+
+        const nextButton = card.querySelector(".next-button");
+
+        nextButton.addEventListener("click", () => {
             currentIndex++;
 
             if (currentIndex >= situations.length) {
@@ -6092,7 +6232,7 @@ async function handleQuestionAnswer() {
             } else {
                 showSituation();
             }
-        }, 700);
+        });
     } catch (error) {
         console.error(
             "Flagged: неожиданная ошибка сохранения QUESTION:",
@@ -6518,7 +6658,11 @@ async function handleAnswer(button) {
                     : "Next"
             }
           </button>
+
+          <div id="commentsSection" class="comments-section"></div>
         `;
+
+        await renderComments(questionId);
 
         const nextButton = card.querySelector(".next-button");
 
@@ -6800,15 +6944,33 @@ async function renderComments(questionId) {
 
     section.innerHTML = `
         <div style="margin-top:28px;">
-            <h3 style="margin-bottom:14px;">
-                ${
-                    language === "ru"
-                        ? "Комментарии"
-                        : language === "pl"
-                        ? "Komentarze"
-                        : "Comments"
-                }
-            </h3>
+            <button
+                id="commentsToggle"
+                type="button"
+                style="
+                    width:100%;
+                    text-align:left;
+                    background:#171719;
+                    border:1px solid #333;
+                    border-radius:12px;
+                    padding:14px 16px;
+                    color:inherit;
+                    font-size:16px;
+                    cursor:pointer;
+                "
+            >
+                <span id="commentsTitle">
+                    ${
+                        language === "ru"
+                            ? "Обсуждение"
+                            : language === "pl"
+                            ? "Dyskusja"
+                            : "Discussion"
+                    }
+                </span>
+            </button>
+
+            <div id="commentsContent" style="display:none; margin-top:14px;">
 
             <textarea
                 id="newCommentText"
@@ -6889,10 +7051,51 @@ async function renderComments(questionId) {
                         : "Loading comments..."
                 }
             </div>
+
+            </div>
         </div>
     `;
 
     const comments = await loadComments(questionId);
+
+    const commentsToggle = document.getElementById("commentsToggle");
+    const commentsContent = document.getElementById("commentsContent");
+    const commentsTitle = document.getElementById("commentsTitle");
+
+    if (commentsTitle) {
+        commentsTitle.textContent =
+            language === "ru"
+                ? `Обсуждение · ${comments.length} ▶`
+                : language === "pl"
+                ? `Dyskusja · ${comments.length} ▶`
+                : `Discussion · ${comments.length} ▶`;
+    }
+
+    if (commentsToggle && commentsContent) {
+        commentsToggle.addEventListener("click", () => {
+            const isOpen = commentsContent.style.display !== "none";
+
+            commentsContent.style.display = isOpen ? "none" : "block";
+
+            if (commentsTitle) {
+                commentsTitle.textContent =
+                    language === "ru"
+                        ? `Обсуждение · ${comments.length} ${isOpen ? "▶" : "▼"}`
+                        : language === "pl"
+                        ? `Dyskusja · ${comments.length} ${isOpen ? "▶" : "▼"}`
+                        : `Discussion · ${comments.length} ${isOpen ? "▶" : "▼"}`;
+            }
+
+            if (!isOpen) {
+                setTimeout(() => {
+                    commentsContent.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start"
+                    });
+                }, 50);
+            }
+        });
+    }
 
     const list = document.getElementById("commentsList");
 
@@ -7117,6 +7320,21 @@ async function renderComments(questionId) {
                 showReplyForm(questionId, commentId);
             }
         });
+
+    const discussionParams = new URLSearchParams(
+        window.location.search
+    );
+
+    if (discussionParams.get("discussion") === "1") {
+        setTimeout(() => {
+            document
+                .getElementById("commentsSection")
+                ?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+        }, 100);
+    }
 }
 
 async function addComment(
@@ -7192,6 +7410,8 @@ async function addComment(
     }
 
     await renderComments(questionId);
+
+    document.getElementById("commentsToggle")?.click();
 }
 
 async function showReplyForm(questionId, parentCommentId) {
