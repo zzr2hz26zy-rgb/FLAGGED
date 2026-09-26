@@ -6518,7 +6518,7 @@ async function handleAnswer(button) {
     }
 
     // -----------------------------------------------------
-    // Личный опыт для SITUATION
+    // Личный опыт для SITUATION и QUESTION с вариантами
     // -----------------------------------------------------
 
     if (
@@ -6535,17 +6535,51 @@ async function handleAnswer(button) {
     ) {
         pendingAnswerSelection = optionId;
 
+        // Для QUESTION блок личного опыта уже находится
+        // в карточке. Не добавляем его через innerHTML +=,
+        // чтобы не уничтожать существующие обработчики.
+        if (situation.type === "QUESTION") {
+            const personalExperienceButtons = card.querySelectorAll(
+                ".personal-experience-option"
+            );
+
+            personalExperienceButtons.forEach(button => {
+                button.onclick = () => {
+                    const experience =
+                        button.dataset.value === "true";
+
+                    personalExperience = experience;
+                    pendingPersonalExperience = experience;
+
+                    personalExperienceButtons.forEach(item => {
+                        item.removeAttribute("data-selected");
+                        item.style.background = "#171719";
+                        item.style.color = "white";
+                    });
+
+                    button.setAttribute("data-selected", "true");
+                    button.style.background = "#fff";
+                    button.style.color = "#111";
+
+                    const selectedId = pendingAnswerSelection;
+
+                    handleAnswer({
+                        dataset: {
+                            optionId: String(selectedId)
+                        }
+                    });
+                };
+            });
+
+            return;
+        }
+
+        // Старый блок для SITUATION оставляем.
         card.innerHTML += `
           <div style="text-align:center; margin-top:20px;">
             <div style="margin-bottom:12px; font-weight:bold;">
               ${
-                situation.type === "QUESTION"
-                  ? language === "ru"
-                    ? "У вас есть личный опыт?"
-                    : language === "pl"
-                    ? "Czy masz osobiste doświadczenie?"
-                    : "Do you have personal experience?"
-                  : language === "ru"
+                language === "ru"
                   ? "У тебя был личный опыт этой ситуации?"
                   : language === "pl"
                   ? "Czy masz osobiste doświadczenie w tej sytuacji?"
@@ -6599,11 +6633,6 @@ async function handleAnswer(button) {
 
         return;
     }
-
-    // -----------------------------------------------------
-    // Личный опыт используется только для SITUATION.
-    // Для QUESTION значение всегда false.
-    // -----------------------------------------------------
 
     const experienceValue =
         pendingPersonalExperience ?? false;
