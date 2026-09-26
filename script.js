@@ -3208,7 +3208,7 @@ async function showProfileDashboard() {
             window.history.pushState(
                 {},
                 "",
-                `?question=${questionId}&discussion=1`
+                `?question=${questionId}&discussion=1&from=discussions`
             );
 
             document.getElementById("profileDetailScreen").style.display =
@@ -5079,17 +5079,28 @@ function showSituation() {
 
     document
         .getElementById("backToCategoriesFromQuestion")
-        ?.addEventListener("click", () => {
+        ?.addEventListener("click", async () => {
             pendingAnswer = null;
             pendingPersonalExperience = null;
             pendingAnswerSelection = null;
             currentIndex = 0;
             gameStarted = false;
 
+            const params = new URLSearchParams(window.location.search);
+
+            if (params.get("from") === "discussions") {
+                window.history.pushState({}, "", "?");
+                await showProfileDashboard();
+                return;
+            }
+
             showCategoryScreen();
         });
 
-    if (situation.type === "QUESTION") {
+    if (
+        situation.type === "QUESTION" &&
+        (!situation.options || situation.options.length === 0)
+    ) {
         document
             .getElementById("submitQuestionAnswerButton")
             ?.addEventListener("click", handleQuestionAnswer);
@@ -5422,7 +5433,7 @@ async function renderQuestionAnswers(questionId) {
     } = await supabaseClient.auth.getUser();
 
     section.innerHTML = `
-        <div>
+        <div style="margin-top:28px;">
             <button
                 id="questionAnswersToggle"
                 type="button"
