@@ -6825,7 +6825,14 @@ async function handleAnswer(button) {
           </div>
 
           ${
-            situation.type === "SITUATION" &&
+            (
+              situation.type === "SITUATION" ||
+              (
+                situation.type === "QUESTION" &&
+                situation.options &&
+                situation.options.length > 0
+              )
+            ) &&
             situation.hasPersonalExperience &&
             totalVotes > 0
               ? `
@@ -6861,7 +6868,13 @@ async function handleAnswer(button) {
                   >
                     <span>
                       ${
-                        language === "ru"
+                        situation.type === "QUESTION"
+                          ? language === "ru"
+                            ? "Да"
+                            : language === "pl"
+                            ? "Tak"
+                            : "Yes"
+                          : language === "ru"
                           ? "Личный опыт"
                           : language === "pl"
                           ? "Osobiste doświadczenie"
@@ -6902,7 +6915,13 @@ async function handleAnswer(button) {
                   >
                     <span>
                       ${
-                        language === "ru"
+                        situation.type === "QUESTION"
+                          ? language === "ru"
+                            ? "Нет"
+                            : language === "pl"
+                            ? "Nie"
+                            : "No"
+                          : language === "ru"
                           ? "Мнение"
                           : language === "pl"
                           ? "Opinia"
