@@ -5256,7 +5256,16 @@ function showSituation() {
         const buttons = card.querySelectorAll(".buttons button");
 
         buttons.forEach(button => {
-            button.addEventListener("click", () => handleAnswer(button));
+            button.addEventListener("click", () => {
+                if (button.classList.contains("answer-option")) {
+                    card.querySelectorAll(".answer-option").forEach(option => {
+                        option.removeAttribute("data-selected");
+                    });
+                    button.setAttribute("data-selected", "true");
+                }
+
+                handleAnswer(button);
+            });
         });
     }
 

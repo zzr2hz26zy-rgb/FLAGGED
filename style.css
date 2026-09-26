@@ -1612,6 +1612,13 @@ body:has(.card .situation) .buttons .answer-option:hover {
     border-color: #66666c;
 }
 
+body:has(.card .situation) .buttons button.answer-option[data-selected="true"] {
+    background: #fff !important;
+    background-color: #fff !important;
+    color: #111 !important;
+    border-color: #fff !important;
+}
+
 /* Стандартные варианты */
 body:has(.card .situation) .buttons .normal,
 body:has(.card .situation) .buttons .hmm,
