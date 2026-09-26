@@ -1560,6 +1560,17 @@ async function showQuestionComposer(editSubmissionId = null) {
                 }))
                 .filter(option => option.text);
 
+        if (selectedType === "QUESTION" && options.length === 0) {
+          alert(
+            language === "ru"
+              ? "Добавьте хотя бы один вариант ответа."
+              : language === "pl"
+              ? "Dodaj co najmniej jedną opcję odpowiedzi."
+              : "Add at least one answer option."
+          );
+          return false;
+        }
+
         const hasPersonalExperience =
           selectedType === "SITUATION"
             ? document.getElementById("submissionPersonalExperience")?.checked ??
