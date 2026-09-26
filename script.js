@@ -5000,6 +5000,77 @@ function showSituation() {
                   }
                 </label>
 
+                ${
+                  situation.hasPersonalExperience
+                    ? `
+                      <div style="margin-top:16px;">
+                        <div style="font-size:14px; margin-bottom:8px;">
+                          ${
+                            language === "ru"
+                              ? "У вас есть личный опыт?"
+                              : language === "pl"
+                              ? "Czy masz osobiste doświadczenie?"
+                              : "Do you have personal experience?"
+                          }
+                        </div>
+
+                        <div
+                          id="questionPersonalExperience"
+                          style="
+                            display:flex;
+                            gap:8px;
+                            flex-wrap:wrap;
+                          "
+                        >
+                          <button
+                            type="button"
+                            class="personal-experience-option"
+                            data-value="true"
+                            style="
+                              padding:10px 14px;
+                              border:1px solid #444;
+                              border-radius:10px;
+                              background:#171719;
+                              color:white;
+                              cursor:pointer;
+                            "
+                          >
+                            ${
+                              language === "ru"
+                                ? "Да"
+                                : language === "pl"
+                                ? "Tak"
+                                : "Yes"
+                            }
+                          </button>
+
+                          <button
+                            type="button"
+                            class="personal-experience-option"
+                            data-value="false"
+                            style="
+                              padding:10px 14px;
+                              border:1px solid #444;
+                              border-radius:10px;
+                              background:#171719;
+                              color:white;
+                              cursor:pointer;
+                            "
+                          >
+                            ${
+                              language === "ru"
+                                ? "Нет, это моё мнение"
+                                : language === "pl"
+                                ? "Nie, to tylko moja opinia"
+                                : "No, this is just my opinion"
+                            }
+                          </button>
+                        </div>
+                      </div>
+                    `
+                    : ""
+                }
+
                 <button
                   id="submitQuestionAnswerButton"
                   type="button"
@@ -5104,6 +5175,24 @@ function showSituation() {
         document
             .getElementById("submitQuestionAnswerButton")
             ?.addEventListener("click", handleQuestionAnswer);
+
+        const personalExperienceButtons = card.querySelectorAll(
+            ".personal-experience-option"
+        );
+
+        personalExperienceButtons.forEach(button => {
+            button.addEventListener("click", () => {
+                personalExperienceButtons.forEach(item => {
+                    item.removeAttribute("data-selected");
+                    item.style.background = "#171719";
+                    item.style.color = "white";
+                });
+
+                button.setAttribute("data-selected", "true");
+                button.style.background = "#fff";
+                button.style.color = "#111";
+            });
+        });
     } else {
         const buttons = card.querySelectorAll(".buttons button");
 
@@ -5428,6 +5517,13 @@ async function renderQuestionAnswers(questionId) {
 
     if (!section) return;
 
+    const currentQuestion = situations.find(
+        question => Number(question.id) === Number(questionId)
+    );
+
+    const situationHasPersonalExperience =
+        currentQuestion?.hasPersonalExperience === true;
+
     const {
         data: { user }
     } = await supabaseClient.auth.getUser();
@@ -5509,7 +5605,7 @@ async function renderQuestionAnswers(questionId) {
 
     const { data, error } = await supabaseClient
         .from("question_answers")
-        .select("id, answer_text, user_id, is_anonymous, original_language, created_at")
+        .select("id, answer_text, user_id, is_anonymous, original_language, has_personal_experience, created_at")
         .eq("question_id", questionId)
         .eq("moderation_status", "VISIBLE")
         .order("created_at", { ascending: false });
@@ -5688,11 +5784,48 @@ async function renderQuestionAnswers(questionId) {
                     ? " question-answer-hidden"
                     : "";
 
+            const personalExperienceLabel =
+                situationHasPersonalExperience &&
+                answer.has_personal_experience !== null
+                    ? answer.has_personal_experience
+                        ? (
+                            language === "ru"
+                                ? "✓ Личный опыт"
+                                : language === "pl"
+                                ? "✓ Osobiste doświadczenie"
+                                : "✓ Personal experience"
+                          )
+                        : (
+                            language === "ru"
+                                ? "Моё мнение"
+                                : language === "pl"
+                                ? "Moja opinia"
+                                : "My opinion"
+                          )
+                    : "";
+
             return `
                 <div class="question-answer-card${hiddenClass}">
                     <div class="question-answer-author">
                         ${escapeHtml(authorName)}
                     </div>
+
+                    ${
+                        personalExperienceLabel
+                            ? `
+                                <div
+                                    style="
+                                        margin-top:4px;
+                                        margin-bottom:8px;
+                                        font-size:12px;
+                                        opacity:0.75;
+                                    "
+                                >
+                                    ${personalExperienceLabel}
+                                </div>
+                            `
+                            : ""
+                    }
 
                     <div
                         class="question-answer-text"
@@ -6141,12 +6274,36 @@ async function handleQuestionAnswer() {
         const isAnonymous =
             anonymousCheckbox?.checked ?? false;
 
+        const personalExperienceButton =
+            document.querySelector(
+                ".personal-experience-option[data-selected='true']"
+            );
+
+        let hasPersonalExperience = false;
+
+        if (question.hasPersonalExperience) {
+            if (!personalExperienceButton) {
+                alert(
+                    language === "ru"
+                        ? "Выбери, есть ли у тебя личный опыт."
+                        : language === "pl"
+                        ? "Wybierz, czy masz osobiste doświadczenie."
+                        : "Choose whether you have personal experience."
+                );
+                return;
+            }
+
+            hasPersonalExperience =
+                personalExperienceButton.dataset.value === "true";
+        }
+
         const answerPayload = {
             question_id: questionId,
             browser_id: flaggedBrowserId,
             answer_text: answerText,
             original_language: detectedLanguage,
-            is_anonymous: isAnonymous
+            is_anonymous: isAnonymous,
+            has_personal_experience: hasPersonalExperience
         };
 
         if (user) {
