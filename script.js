@@ -5001,6 +5001,8 @@ function showSituation() {
                 </label>
 
                 ${
+                  situation.type === "QUESTION" &&
+                  (!situation.options || situation.options.length === 0) &&
                   situation.hasPersonalExperience
                     ? `
                       <div style="margin-top:16px;">
