@@ -5099,6 +5099,80 @@ function showSituation() {
         }
       </div>
 
+        ${
+          situation.type === "QUESTION" &&
+          situation.options &&
+          situation.options.length > 0 &&
+          situation.hasPersonalExperience
+            ? `
+              <div style="margin-top:16px;">
+                <div style="font-size:14px; margin-bottom:8px;">
+                  ${
+                    language === "ru"
+                      ? "У вас есть личный опыт?"
+                      : language === "pl"
+                      ? "Czy masz osobiste doświadczenie?"
+                      : "Do you have personal experience?"
+                  }
+                </div>
+
+                <div
+                  id="questionPersonalExperience"
+                  style="
+                    display:flex;
+                    gap:8px;
+                    flex-wrap:wrap;
+                  "
+                >
+                  <button
+                    type="button"
+                    class="personal-experience-option"
+                    data-value="true"
+                    style="
+                      padding:10px 14px;
+                      border:1px solid #444;
+                      border-radius:10px;
+                      background:#171719;
+                      color:white;
+                      cursor:pointer;
+                    "
+                  >
+                    ${
+                      language === "ru"
+                        ? "Да"
+                        : language === "pl"
+                        ? "Tak"
+                        : "Yes"
+                    }
+                  </button>
+
+                  <button
+                    type="button"
+                    class="personal-experience-option"
+                    data-value="false"
+                    style="
+                      padding:10px 14px;
+                      border:1px solid #444;
+                      border-radius:10px;
+                      background:#171719;
+                      color:white;
+                      cursor:pointer;
+                    "
+                  >
+                    ${
+                      language === "ru"
+                        ? "Нет, это моё мнение"
+                        : language === "pl"
+                        ? "Nie, to tylko moja opinia"
+                        : "No, this is just my opinion"
+                    }
+                  </button>
+                </div>
+              </div>
+            `
+            : ""
+        }
+
 <div class="progress-info">
     <span>${
         (() => {
@@ -5176,23 +5250,6 @@ function showSituation() {
             .getElementById("submitQuestionAnswerButton")
             ?.addEventListener("click", handleQuestionAnswer);
 
-        const personalExperienceButtons = card.querySelectorAll(
-            ".personal-experience-option"
-        );
-
-        personalExperienceButtons.forEach(button => {
-            button.addEventListener("click", () => {
-                personalExperienceButtons.forEach(item => {
-                    item.removeAttribute("data-selected");
-                    item.style.background = "#171719";
-                    item.style.color = "white";
-                });
-
-                button.setAttribute("data-selected", "true");
-                button.style.background = "#fff";
-                button.style.color = "#111";
-            });
-        });
     } else {
         const buttons = card.querySelectorAll(".buttons button");
 
@@ -5200,6 +5257,24 @@ function showSituation() {
             button.addEventListener("click", () => handleAnswer(button));
         });
     }
+
+    const personalExperienceButtons = card.querySelectorAll(
+        ".personal-experience-option"
+    );
+
+    personalExperienceButtons.forEach(button => {
+        button.addEventListener("click", () => {
+            personalExperienceButtons.forEach(item => {
+                item.removeAttribute("data-selected");
+                item.style.background = "#171719";
+                item.style.color = "white";
+            });
+
+            button.setAttribute("data-selected", "true");
+            button.style.background = "#fff";
+            button.style.color = "#111";
+        });
+    });
 
     if (situation.type === "QUESTION") {
         renderQuestionAnswers(situation.id);
@@ -6447,7 +6522,14 @@ async function handleAnswer(button) {
     // -----------------------------------------------------
 
     if (
-        situation.type === "SITUATION" &&
+        (
+            situation.type === "SITUATION" ||
+            (
+                situation.type === "QUESTION" &&
+                situation.options &&
+                situation.options.length > 0
+            )
+        ) &&
         situation.hasPersonalExperience &&
         pendingPersonalExperience === null
     ) {
@@ -6457,7 +6539,13 @@ async function handleAnswer(button) {
           <div style="text-align:center; margin-top:20px;">
             <div style="margin-bottom:12px; font-weight:bold;">
               ${
-                language === "ru"
+                situation.type === "QUESTION"
+                  ? language === "ru"
+                    ? "У вас есть личный опыт?"
+                    : language === "pl"
+                    ? "Czy masz osobiste doświadczenie?"
+                    : "Do you have personal experience?"
+                  : language === "ru"
                   ? "У тебя был личный опыт этой ситуации?"
                   : language === "pl"
                   ? "Czy masz osobiste doświadczenie w tej sytuacji?"
