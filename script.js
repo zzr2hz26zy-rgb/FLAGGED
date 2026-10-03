@@ -1096,6 +1096,24 @@ async function showQuestionComposer(editSubmissionId = null) {
     return matches;
   };
 
+  const categorySourceLabels = {
+    ru: {
+      auto: "Рекомендация: выбрана автоматически",
+      user: "Категорию выбрали вы",
+      draft: "Категория сохранена в черновике"
+    },
+    pl: {
+      auto: "Sugestia: wybrano automatycznie",
+      user: "Kategoria wybrana przez Ciebie",
+      draft: "Kategoria zapisana w wersji roboczej"
+    },
+    en: {
+      auto: "Suggestion: selected automatically",
+      user: "You selected this category",
+      draft: "Category saved in draft"
+    }
+  };
+
   const renderComposerFields = (type, anonymousByDefault = false, currentDraft = null) => {
     const questionOptions =
       currentDraft?.questionOptions ?? currentDraft?.options ?? [];
@@ -1190,6 +1208,9 @@ async function showQuestionComposer(editSubmissionId = null) {
 
     const selectedCategoryId =
       currentDraft?.categoryId ?? recommendedCategory;
+    const categorySource =
+      currentDraft?.categorySource ||
+      (editingSubmissionId ? "draft" : "auto");
 
     const categoryBlock = `
       <div
@@ -1245,6 +1266,12 @@ async function showQuestionComposer(editSubmissionId = null) {
             )
             .join("")}
         </select>
+        <p
+          id="categorySelectionSource"
+          style="margin:8px 0 0 0; color:#999; font-size:13px;"
+        >
+          ${categorySourceLabels[language]?.[categorySource] || ""}
+        </p>
       </div>
     `;
 
@@ -1428,6 +1455,48 @@ async function showQuestionComposer(editSubmissionId = null) {
       composerState || draftState
     );
 
+    if (!composerState) {
+      const categorySelect =
+        document.getElementById("submissionPrimaryCategory");
+      const anonymousCheckbox =
+        document.getElementById("submissionAnonymous");
+
+      composerState = {
+        ...(draftState || {}),
+        text: document.getElementById("userQuestionText").value,
+        categoryId:
+          categorySelect.value === "" ? "" : Number(categorySelect.value),
+        hasPersonalExperience:
+          document.getElementById("submissionPersonalExperience")
+            ?.checked === true,
+        isAnonymous: anonymousCheckbox?.checked === true,
+        categorySource: editingSubmissionId ? "draft" : "auto",
+        questionOptions:
+          type === "QUESTION"
+            ? [1, 2, 3, 4, 5].map(position => ({
+                position,
+                text:
+                  document.getElementById(
+                    "submissionOption" + position
+                  )?.value || ""
+              }))
+            : []
+      };
+    }
+
+    const updateCategorySourceLabel = () => {
+      const categorySourceLabel =
+        document.getElementById("categorySelectionSource");
+      const source =
+        composerState?.categorySource ||
+        (editingSubmissionId ? "draft" : "auto");
+
+      if (categorySourceLabel) {
+        categorySourceLabel.textContent =
+          categorySourceLabels[language]?.[source] || "";
+      }
+    };
+
     document
       .getElementById("userQuestionType")
       .addEventListener("change", event => {
@@ -1467,30 +1536,43 @@ async function showQuestionComposer(editSubmissionId = null) {
             document.getElementById("submissionPersonalExperience")
               ?.checked === true,
           isAnonymous: anonymousCheckbox?.checked === true,
+          categorySource:
+            composerState?.categorySource ||
+            (editingSubmissionId ? "draft" : "auto"),
           questionOptions
         };
 
         render(event.target.value);
       });
 
-    let categoryWasChangedByUser = false;
-
     document
       .getElementById("submissionPrimaryCategory")
-      .addEventListener("change", () => {
-        categoryWasChangedByUser = true;
+      .addEventListener("change", event => {
+        composerState = {
+          ...composerState,
+          categoryId:
+            event.target.value === "" ? "" : Number(event.target.value),
+          categorySource: "user"
+        };
+        updateCategorySourceLabel();
       });
 
     document
       .getElementById("userQuestionText")
       .addEventListener("input", event => {
-        if (categoryWasChangedByUser) return;
+        if (composerState?.categorySource === "user") return;
 
         const suggestions = getCategorySuggestions(event.target.value);
 
         if (suggestions.length > 0) {
           document.getElementById("submissionPrimaryCategory").value =
             suggestions[0].id;
+          composerState = {
+            ...composerState,
+            categoryId: suggestions[0].id,
+            categorySource: "auto"
+          };
+          updateCategorySourceLabel();
         }
       });
 
