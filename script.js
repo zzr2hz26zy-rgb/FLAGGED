@@ -1223,6 +1223,10 @@ async function showQuestionComposer(editSubmissionId = null) {
     const categorySource =
       currentDraft?.categorySource ||
       (editingSubmissionId ? "draft" : "auto");
+    const categorySourceText =
+      categorySource === "user" && !selectedCategoryId
+        ? ""
+        : categorySourceLabels[language]?.[categorySource] || "";
 
     const categoryBlock = `
       <div
@@ -1279,10 +1283,22 @@ async function showQuestionComposer(editSubmissionId = null) {
             .join("")}
         </select>
         <p
+          id="categorySelectionError"
+          style="display:none; margin:8px 0 0 0; color:#ff8b8b; font-size:13px;"
+        >
+          ${
+            language === "ru"
+              ? "Выберите категорию."
+              : language === "pl"
+              ? "Wybierz kategorię."
+              : "Choose a category."
+          }
+        </p>
+        <p
           id="categorySelectionSource"
           style="margin:8px 0 0 0; color:#999; font-size:13px;"
         >
-          ${categorySourceLabels[language]?.[categorySource] || ""}
+          ${categorySourceText}
         </p>
       </div>
     `;
@@ -1541,10 +1557,14 @@ async function showQuestionComposer(editSubmissionId = null) {
       const source =
         composerState?.categorySource ||
         (editingSubmissionId ? "draft" : "auto");
+      const selectedCategoryId =
+        document.getElementById("submissionPrimaryCategory")?.value;
 
       if (categorySourceLabel) {
         categorySourceLabel.textContent =
-          categorySourceLabels[language]?.[source] || "";
+          source === "user" && !selectedCategoryId
+            ? ""
+            : categorySourceLabels[language]?.[source] || "";
       }
     };
 
@@ -1599,6 +1619,7 @@ async function showQuestionComposer(editSubmissionId = null) {
     document
       .getElementById("submissionPrimaryCategory")
       .addEventListener("change", event => {
+        document.getElementById("categorySelectionError").style.display = "none";
         composerState = {
           ...composerState,
           categoryId:
@@ -1622,6 +1643,7 @@ async function showQuestionComposer(editSubmissionId = null) {
         if (suggestions.length > 0) {
           document.getElementById("submissionPrimaryCategory").value =
             suggestions[0].id;
+          document.getElementById("categorySelectionError").style.display = "none";
           composerState = {
             ...composerState,
             categoryId: suggestions[0].id,
@@ -1794,14 +1816,9 @@ async function showQuestionComposer(editSubmissionId = null) {
         };
 
         if (!selectedCategoryId) {
-          alert(
-            language === "ru"
-              ? "Выберите категорию."
-              : language === "pl"
-              ? "Wybierz kategorię."
-              : "Choose a category."
-          );
-          return;
+          document.getElementById("categorySelectionError").style.display = "block";
+          document.getElementById("submissionPrimaryCategory").focus();
+          return false;
         }
 
         const optionsForUpdate = options.map(option => {
