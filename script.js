@@ -5528,6 +5528,16 @@ async function handleAnswer(button) {
     }
 }
 function nextStep() {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("question")) {
+        url.searchParams.delete("question");
+        window.history.replaceState(
+            window.history.state,
+            "",
+            `${url.pathname}${url.search}${url.hash}`
+        );
+    }
+
     currentIndex++;
     showNextUnansweredQuestion();
 }
