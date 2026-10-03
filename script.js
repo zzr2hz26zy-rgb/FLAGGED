@@ -1113,6 +1113,16 @@ async function showQuestionComposer(editSubmissionId = null) {
               }
             </p>
 
+            <p style="margin:0 0 8px 0; color:#999; font-size:13px;">
+              ${
+                language === "ru"
+                  ? "Добавьте от 1 до 5 вариантов. Достаточно одного."
+                  : language === "pl"
+                  ? "Dodaj od 1 do 5 opcji. Wystarczy jedna."
+                  : "Add 1 to 5 options. One is enough."
+              }
+            </p>
+
             ${[1, 2, 3, 4, 5]
               .map(
                 position => `
