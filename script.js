@@ -766,6 +766,7 @@ async function showQuestionComposer(editSubmissionId = null) {
     ? Number(editSubmissionId)
     : null;
   let draftState = null;
+  let composerState = null;
 
   if (!editingSubmissionId) {
     lastSavedSubmissionId = null;
@@ -1096,6 +1097,8 @@ async function showQuestionComposer(editSubmissionId = null) {
   };
 
   const renderComposerFields = (type, anonymousByDefault = false, currentDraft = null) => {
+    const questionOptions =
+      currentDraft?.questionOptions ?? currentDraft?.options ?? [];
     const optionsBlock =
       type === "QUESTION"
         ? `
@@ -1124,7 +1127,7 @@ async function showQuestionComposer(editSubmissionId = null) {
                         : `Option ${position}`
                     }"
                     value="${escapeProfileHtml(
-                      currentDraft?.options?.find(
+                      questionOptions.find(
                         option => option.position === position
                       )?.text || ""
                     )}"
@@ -1176,7 +1179,7 @@ async function showQuestionComposer(editSubmissionId = null) {
         : "";
 
     const selectedCategoryId =
-      currentDraft?.categoryId || recommendedCategory;
+      currentDraft?.categoryId ?? recommendedCategory;
 
     const categoryBlock = `
       <div
@@ -1386,18 +1389,57 @@ async function showQuestionComposer(editSubmissionId = null) {
     `;
   };
 
+  let renderedType = draftState?.type || "SITUATION";
+
   const render = (type = "SITUATION") => {
-    card.innerHTML = renderComposerFields(type, questionAnonymousDefault, draftState);
+    renderedType = type;
+    card.innerHTML = renderComposerFields(
+      type,
+      questionAnonymousDefault,
+      composerState || draftState
+    );
 
     document
       .getElementById("userQuestionType")
       .addEventListener("change", event => {
         const anonymousCheckbox =
           document.getElementById("submissionAnonymous");
+        const currentType = renderedType;
 
         if (anonymousCheckbox) {
           questionAnonymousDefault = anonymousCheckbox.checked;
         }
+
+        const sourceState = composerState || draftState || {};
+        const questionOptions =
+          currentType === "QUESTION"
+            ? [1, 2, 3, 4, 5].map(position => ({
+                position,
+                text:
+                  document.getElementById(
+                    "submissionOption" + position
+                  )?.value || ""
+              }))
+            : composerState?.questionOptions ??
+              (draftState?.type === "QUESTION"
+                ? draftState.options
+                : []);
+
+        composerState = {
+          ...sourceState,
+          text: document.getElementById("userQuestionText").value,
+          categoryId:
+            document.getElementById("submissionPrimaryCategory").value === ""
+              ? ""
+              : Number(
+                  document.getElementById("submissionPrimaryCategory").value
+                ),
+          hasPersonalExperience:
+            document.getElementById("submissionPersonalExperience")
+              ?.checked === true,
+          isAnonymous: anonymousCheckbox?.checked === true,
+          questionOptions
+        };
 
         render(event.target.value);
       });
