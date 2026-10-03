@@ -1164,6 +1164,18 @@ async function showQuestionComposer(editSubmissionId = null) {
                 `
               )
               .join("")}
+            <p
+              id="questionOptionsError"
+              style="display:none; margin:8px 0 0 0; color:#ff8b8b; font-size:13px;"
+            >
+              ${
+                language === "ru"
+                  ? "Добавьте хотя бы один вариант ответа."
+                  : language === "pl"
+                  ? "Dodaj co najmniej jedną opcję odpowiedzi."
+                  : "Add at least one answer option."
+              }
+            </p>
           </div>
         `
         : "";
@@ -1484,6 +1496,16 @@ async function showQuestionComposer(editSubmissionId = null) {
       composerState || draftState
     );
 
+    [1, 2, 3, 4, 5].forEach(position => {
+      document
+        .getElementById("submissionOption" + position)
+        ?.addEventListener("input", event => {
+          if (event.target.value.trim()) {
+            document.getElementById("questionOptionsError").style.display = "none";
+          }
+        });
+    });
+
     if (!composerState) {
       const categorySelect =
         document.getElementById("submissionPrimaryCategory");
@@ -1746,13 +1768,8 @@ async function showQuestionComposer(editSubmissionId = null) {
                 .filter(option => option.text);
 
         if (selectedType === "QUESTION" && options.length === 0) {
-          alert(
-            language === "ru"
-              ? "Добавьте хотя бы один вариант ответа."
-              : language === "pl"
-              ? "Dodaj co najmniej jedną opcję odpowiedzi."
-              : "Add at least one answer option."
-          );
+          document.getElementById("questionOptionsError").style.display = "block";
+          document.getElementById("submissionOption1").focus();
           return false;
         }
 
