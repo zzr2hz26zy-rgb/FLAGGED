@@ -1261,6 +1261,37 @@ async function showQuestionComposer(editSubmissionId = null) {
         }
       </h2>
 
+      <p style="margin:16px 0 0 0;">
+        ${
+          language === "ru"
+            ? "Тип вопроса"
+            : language === "pl"
+            ? "Typ pytania"
+            : "Question type"
+        }
+      </p>
+      <select
+        id="userQuestionType"
+        style="
+          width:100%;
+          margin-top:12px;
+          padding:14px;
+          border-radius:10px;
+        "
+      >
+        <option value="SITUATION" ${type === "SITUATION" ? "selected" : ""}>SITUATION</option>
+        <option value="QUESTION" ${type === "QUESTION" ? "selected" : ""}>QUESTION</option>
+      </select>
+
+      <p style="margin:16px 0 0 0;">
+        ${
+          language === "ru"
+            ? "Вопрос"
+            : language === "pl"
+            ? "Pytanie"
+            : "Question"
+        }
+      </p>
       <textarea
         id="userQuestionText"
         rows="6"
@@ -1280,18 +1311,6 @@ async function showQuestionComposer(editSubmissionId = null) {
           resize:vertical;
         "
       >${escapeProfileHtml(currentDraft?.text || "")}</textarea>
-      <select
-        id="userQuestionType"
-        style="
-          width:100%;
-          margin-top:12px;
-          padding:14px;
-          border-radius:10px;
-        "
-      >
-        <option value="SITUATION" ${type === "SITUATION" ? "selected" : ""}>SITUATION</option>
-        <option value="QUESTION" ${type === "QUESTION" ? "selected" : ""}>QUESTION</option>
-      </select>
 
       <div id="dynamicSubmissionFields">
         ${optionsBlock}
