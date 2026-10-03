@@ -1802,6 +1802,7 @@ async function showQuestionComposer(editSubmissionId = null) {
         }
 
         lastSavedSubmissionId = submission.id;
+        editingSubmissionId = submission.id;
 
         const submitQuestionButton = document.getElementById(
           "submitQuestionButton"
