@@ -1319,6 +1319,15 @@ async function showQuestionComposer(editSubmissionId = null) {
             : "Question"
         }
       </p>
+      <p style="margin:8px 0 0 0; color:#999; font-size:13px;">
+        ${
+          language === "ru"
+            ? "Язык текста: русский"
+            : language === "pl"
+            ? "Język tekstu: polski"
+            : "Text language: English"
+        }
+      </p>
       <textarea
         id="userQuestionText"
         rows="6"
