@@ -1384,6 +1384,10 @@ async function showQuestionComposer(editSubmissionId = null) {
           border-radius:10px;
           cursor:pointer;
           opacity:1;
+          background:#f4f4f7;
+          color:#111;
+          font-size:15px;
+          font-weight:600;
         "
       >
         ${
@@ -1402,18 +1406,20 @@ async function showQuestionComposer(editSubmissionId = null) {
           width:100%;
           margin-top:8px;
           padding:14px;
-          border:none;
+          border:1px solid #444;
           border-radius:10px;
           cursor:pointer;
+          background:transparent;
+          color:#c5c5c5;
         "
       >
         ${
           editingSubmissionId
             ? language === "ru"
-              ? "Сохранить изменения"
+              ? "Сохранить изменения в черновике"
               : language === "pl"
-              ? "Zapisz zmiany"
-              : "Save changes"
+              ? "Zapisz zmiany w wersji roboczej"
+              : "Save changes to draft"
             : language === "ru"
             ? "Сохранить как черновик"
             : language === "pl"
@@ -1429,9 +1435,11 @@ async function showQuestionComposer(editSubmissionId = null) {
           width:100%;
           margin-top:8px;
           padding:12px;
-          border:none;
+          border:1px solid #444;
           border-radius:10px;
           cursor:pointer;
+          background:transparent;
+          color:#aaa;
         "
       >
         ${
