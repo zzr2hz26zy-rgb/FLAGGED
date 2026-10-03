@@ -1347,6 +1347,18 @@ async function showQuestionComposer(editSubmissionId = null) {
           resize:vertical;
         "
       >${escapeProfileHtml(currentDraft?.text || "")}</textarea>
+      <p
+        id="userQuestionTextError"
+        style="display:none; margin:8px 0 0 0; color:#ff8b8b; font-size:13px;"
+      >
+        ${
+          language === "ru"
+            ? "Сначала напиши вопрос."
+            : language === "pl"
+            ? "Najpierw napisz pytanie."
+            : "Write a question first."
+        }
+      </p>
 
       <div id="dynamicSubmissionFields">
         ${optionsBlock}
@@ -1577,6 +1589,10 @@ async function showQuestionComposer(editSubmissionId = null) {
     document
       .getElementById("userQuestionText")
       .addEventListener("input", event => {
+        if (event.target.value.trim()) {
+          document.getElementById("userQuestionTextError").style.display = "none";
+        }
+
         if (composerState?.categorySource === "user") return;
 
         const suggestions = getCategorySuggestions(event.target.value);
@@ -1662,14 +1678,10 @@ async function showQuestionComposer(editSubmissionId = null) {
         );
 
         if (!text) {
-          alert(
-            language === "ru"
-              ? "Сначала напиши вопрос."
-              : language === "pl"
-              ? "Najpierw napisz pytanie."
-              : "Write a question first."
-          );
-          return;
+          const questionTextInput = document.getElementById("userQuestionText");
+          document.getElementById("userQuestionTextError").style.display = "block";
+          questionTextInput.focus();
+          return false;
         }
 
         const {
