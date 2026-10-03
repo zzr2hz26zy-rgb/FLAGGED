@@ -1137,9 +1137,7 @@ async function showQuestionComposer(editSubmissionId = null) {
         `
         : "";
 
-    const experienceBlock =
-      type === "SITUATION"
-        ? `
+    const experienceBlock = `
           <label
             style="
               display:flex;
@@ -1153,15 +1151,20 @@ async function showQuestionComposer(editSubmissionId = null) {
             <span>
               ${
                 language === "ru"
-                  ? "У этой ситуации может быть личный опыт"
+                  ? type === "QUESTION"
+                    ? "У этого вопроса может быть личный опыт"
+                    : "У этой ситуации может быть личный опыт"
                   : language === "pl"
-                  ? "Ta sytuacja może dotyczyć osobistego doświadczenia"
-                  : "This situation can include personal experience"
+                  ? type === "QUESTION"
+                    ? "To pytanie może dotyczyć osobistego doświadczenia"
+                    : "Ta sytuacja może dotyczyć osobistego doświadczenia"
+                  : type === "QUESTION"
+                    ? "This question can include personal experience"
+                    : "This situation can include personal experience"
               }
             </span>
           </label>
-        `
-        : "";
+        `;
 
     const categorySuggestions = getCategorySuggestions(
       document.getElementById("userQuestionText")?.value || ""
@@ -1572,10 +1575,8 @@ async function showQuestionComposer(editSubmissionId = null) {
         }
 
         const hasPersonalExperience =
-          selectedType === "SITUATION"
-            ? document.getElementById("submissionPersonalExperience")?.checked ??
-              false
-            : false;
+          document.getElementById("submissionPersonalExperience")?.checked ??
+          false;
 
         const isAnonymous =
           document.getElementById("submissionAnonymous")?.checked ??
@@ -3211,19 +3212,22 @@ async function showProfileDashboard() {
             }
         });
 
-    document
-        .querySelectorAll(".edit-draft-button")
-        .forEach(button => {
-            button.addEventListener("click", () => {
-                const submissionId = Number(
-                    button.dataset.submissionId
-                );
+    const profileDetailScreen =
+        document.getElementById("profileDetailScreen");
 
-                if (submissionId) {
-                    showQuestionComposer(submissionId);
-                }
-            });
-        });
+    if (profileDetailScreen) {
+        profileDetailScreen.onclick = event => {
+            const button = event.target.closest(".edit-draft-button");
+
+            if (!button) return;
+
+            const submissionId = Number(button.dataset.submissionId);
+
+            if (submissionId) {
+                showQuestionComposer(submissionId);
+            }
+        };
+    }
 }
 
 
