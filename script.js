@@ -258,6 +258,7 @@ let score = 0;
 let gameStarted = false;
 let selectedCategorySlug = "all";
 let language = localStorage.getItem("flaggedLanguage") || "en";
+let refreshQuestionComposerForLanguage = null;
 
 let authReturnAction = () => showStartScreen();
 
@@ -339,6 +340,8 @@ function createLanguageSelector() {
 
     selector.querySelectorAll(".language-menu button").forEach(button => {
         button.addEventListener("click", async () => {
+            const hasActiveQuestionComposer =
+                refreshQuestionComposerForLanguage?.("save") === true;
             language = button.dataset.lang;
             localStorage.setItem("flaggedLanguage", language);
 
@@ -346,7 +349,9 @@ function createLanguageSelector() {
             updateHeader();
             await updateAuthButtons();
 
-            if (document.getElementById("authEmail")) {
+            if (hasActiveQuestionComposer) {
+                refreshQuestionComposerForLanguage("render");
+            } else if (document.getElementById("authEmail")) {
                 const authMode = document.getElementById("authPasswordConfirm")
                     ? "signup"
                     : "signin";
@@ -1551,6 +1556,44 @@ async function showQuestionComposer(editSubmissionId = null) {
       };
     }
 
+    composerState.type = type;
+
+    refreshQuestionComposerForLanguage = action => {
+      if (action === "save") {
+        if (!document.getElementById("userQuestionText")) {
+          refreshQuestionComposerForLanguage = null;
+          return false;
+        }
+        const currentType = renderedType;
+        composerState = {
+          ...(composerState || draftState || {}),
+          type: currentType,
+          text: document.getElementById("userQuestionText")?.value || "",
+          categoryId:
+            document.getElementById("submissionPrimaryCategory")?.value === ""
+              ? ""
+              : Number(document.getElementById("submissionPrimaryCategory")?.value),
+          hasPersonalExperience:
+            document.getElementById("submissionPersonalExperience")?.checked === true,
+          isAnonymous:
+            document.getElementById("submissionAnonymous")?.checked === true,
+          questionOptions:
+            currentType === "QUESTION"
+              ? [1, 2, 3, 4, 5].map(position => ({
+                  position,
+                  text:
+                    document.getElementById("submissionOption" + position)?.value || ""
+                }))
+              : (composerState || draftState)?.questionOptions ||
+                (draftState?.type === "QUESTION" ? draftState.options : [])
+        };
+        return true;
+      }
+
+      render(composerState?.type || renderedType);
+      return true;
+    };
+
     const updateCategorySourceLabel = () => {
       const categorySourceLabel =
         document.getElementById("categorySelectionSource");
@@ -1596,6 +1639,7 @@ async function showQuestionComposer(editSubmissionId = null) {
 
         composerState = {
           ...sourceState,
+          type: event.target.value,
           text: document.getElementById("userQuestionText").value,
           categoryId:
             document.getElementById("submissionPrimaryCategory").value === ""
