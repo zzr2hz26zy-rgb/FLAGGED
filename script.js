@@ -3799,9 +3799,13 @@ async function showAuthComposer(mode = "signin", preserveReturn = false) {
             return;
           }
 
-          const { data, error } = await supabaseClient.auth.signUp(
-            credentials
-          );
+          const { data, error } = await supabaseClient.auth.signUp({
+            ...credentials,
+            options: {
+              emailRedirectTo:
+                window.location.origin + window.location.pathname,
+            },
+          });
 
           if (error) {
             console.error("Ошибка регистрации:", error);
